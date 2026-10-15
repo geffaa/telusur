@@ -12,6 +12,7 @@ import logging
 
 from sqlalchemy import select
 
+from app.config import get_settings
 from app.db import SessionLocal, tenant_session
 from app.eval import generate, runner
 from app.models import EvalRun, Tenant
@@ -57,6 +58,7 @@ async def main() -> None:
             "answers": args.answers,
             "verified_only": args.verified_only,
             "translate": not args.no_translate,
+            "rerank_candidates": get_settings().rerank_candidates,
         }
         if args.threshold is not None:
             config["threshold"] = args.threshold
@@ -64,6 +66,11 @@ async def main() -> None:
             args.mode
             + (" + jawaban" if args.answers else "")
             + (" (tanpa terjemahan)" if args.no_translate else "")
+            + (
+                f" (rerank {config['rerank_candidates']})"
+                if config["rerank_candidates"] != 20 and args.mode == "hybrid_rerank"
+                else ""
+            )
         )
         async with tenant_session(tid) as s:
             row = EvalRun(tenant_id=tid, name=name, config=config)

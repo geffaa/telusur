@@ -326,7 +326,13 @@ export interface EvalMetrics {
 export interface EvalRunItem {
   id: string;
   name: string;
-  config: { mode: RetrievalMode; answers: boolean; verified_only: boolean; translate?: boolean };
+  config: {
+    mode: RetrievalMode;
+    answers: boolean;
+    verified_only: boolean;
+    translate?: boolean;
+    rerank_candidates?: number;
+  };
   status: "queued" | "running" | "done" | "failed";
   progress: number;
   case_count: number;

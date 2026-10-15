@@ -260,6 +260,9 @@ function ComparisonTable({ runs }: { runs: EvalRunItem[] }) {
                       tanpa terjemahan
                     </span>
                   )}
+                  {r.config.rerank_candidates !== undefined && r.config.rerank_candidates !== 20 && (
+                    <span className="ml-1.5 text-xs text-muted-foreground">rerank {r.config.rerank_candidates}</span>
+                  )}
                 </td>
                 {COLUMNS.map((c) => {
                   const v = r.metrics[c.key] as number | undefined;
