@@ -178,8 +178,7 @@ async def run(tenant_id: uuid.UUID, run_id: uuid.UUID) -> dict:
             query = case.question
             if config.get("translate", True):
                 query = await prepare_query(case.question)
-            async with tenant_session(tenant_id) as s:
-                retrieval = await retrieve(s, reader, query, mode=mode)
+            retrieval = await retrieve(tenant_id, reader, query, mode=mode)
             retrieval_ms = int((time.perf_counter() - started) * 1000)
             cands = retrieval.candidates
             top = cands[0].score if cands else 0.0

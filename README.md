@@ -7,7 +7,7 @@
 Asisten pengetahuan internal (RAG) untuk perusahaan: jawaban dari dokumen internal dengan sitasi,
 hanya dari dokumen yang boleh dilihat penanya. Rencana lengkap: [BREAKDOWN.md](BREAKDOWN.md).
 
-**Status:** Milestone 1–4 selesai: multi-tenant + RLS, ingestion PDF/DOCX/MD dengan chunking
+**Status:** Milestone 1–4 selesai, Milestone 5 sebagian (highlight kutipan di PDF, load test; deploy VPS belum): multi-tenant + RLS, ingestion PDF/DOCX/MD dengan chunking
 struktural, hak akses per collection/dokumen, retrieval hybrid (vector + full-text + RRF + reranker),
 chat streaming dengan sitasi yang membuka halaman sumber, penolakan menjawab bila sumber tidak ada,
 versioning dokumen, audit log append-only, pertanyaan tak terjawab per topik, feedback, manajemen
@@ -135,6 +135,47 @@ uv run python -m app.eval compare                          # tabel perbandingan
 Atau dari UI: **Evaluasi → Jalankan evaluasi** (berjalan di worker, dengan progres dan
 perbandingan per pertanyaan antar run).
 
+## Load test
+
+`python -m scripts.loadtest` menjalankan pengguna virtual yang terus bertanya (pertanyaan dari
+set evaluasi, percakapan baru setiap kali) dan membaca stream jawaban sampai selesai. API diuji
+dengan `FAKE_LLM=true`: LLM diganti balasan tiruan dengan jeda token pertama 0,7 detik, sehingga
+angka di bawah mengukur sistem ini (embedding, pencarian, reranker, database), **bukan** batas
+rate free tier Groq. Satu proses API di laptop Apple Silicon (MPS), 45 detik per tingkat.
+
+| Pengguna bersamaan | Chat/menit | Token pertama p50 | p95 | Error |
+|---|---|---|---|---|
+| 1 | 26 | 2,1 s | 2,6 s | 0% |
+| 5 | 42 | 6,9 s | 7,4 s | 0% |
+| 10 | 38 | 15,0 s | 16,9 s | 0% |
+| 20 | 32 | 35,7 s | 37,1 s | 0% |
+
+Yang ditemukan dan diperbaiki:
+
+- **Crash pada 5 pengguna bersamaan.** Embedder dan reranker masing-masing punya lock, sehingga
+  keduanya bisa memakai GPU bersamaan; backend MPS menghentikan proses (assertion Metal).
+  Sekarang semua inferensi model lewat satu lock (`app/device.py`).
+- **Pool koneksi database habis pada 20 pengguna.** Setiap request memegang koneksi selama
+  menunggu giliran GPU. Sekarang koneksi hanya dipakai untuk dua query pencarian; embedding
+  dihitung sebelumnya dan rerank sesudahnya.
+
+Batasnya adalah reranker (±1 detik untuk 20 kandidat), dijalankan bergiliran di satu GPU, sehingga
+throughput mentok di ±40 chat/menit dan latensi naik linear setelahnya. Pengaturan
+`RERANK_CANDIDATES` memberi pilihan terukur:
+
+| `RERANK_CANDIDATES` | Recall@1 | Recall@5 | Chat/menit puncak | p95 di 20 pengguna |
+|---|---|---|---|---|
+| 20 (default) | 0,97 | 1,00 | 42 | 37 s |
+| 10 | 0,95 | 0,98 | 65 | 21 s |
+
+Default tetap 20 karena kualitas; untuk trafik tinggi, langkah berikutnya adalah GPU khusus
+inferensi, batching rerank lintas request, atau beberapa replika API di belakang load balancer.
+
+```bash
+FAKE_LLM=true uv run uvicorn app.main:app --port 8001     # terminal terpisah
+uv run python -m scripts.loadtest --base http://localhost:8001 --users 1 5 10 20
+```
+
 ## Keputusan desain
 
 - **RLS di Postgres, bukan hanya `WHERE tenant_id`.** Setiap transaksi menjalankan
@@ -158,4 +199,7 @@ perbandingan per pertanyaan antar run).
   tambah partisi lewat job ops sebelum 2028).
 - **Pertanyaan tak terjawab dikelompokkan per makna,** sehingga admin melihat topik yang kurang
   ("tunjangan kacamata", 2 penanya) alih-alih daftar kalimat yang berbeda-beda.
+- **Kutipan disorot di dalam PDF.** Panel sumber merender halaman dengan PDF.js dan menyorot teks
+  yang termasuk kutipan; hanya blok berurutan terbesar yang disorot agar frasa yang kebetulan
+  berulang di tempat lain pada halaman tidak ikut menyala.
 - **Pergantian versi atomik.** Chunk baru dan perpindahan `is_current` terjadi dalam satu transaksi.

@@ -13,6 +13,8 @@ import json
 import re
 import time
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass, field
 from typing import Literal
 
@@ -20,6 +22,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.acl import READABLE_DOCUMENTS, Reader
+from app.config import get_settings
+from app.db import tenant_session
 from app.ingestion.embedder import get_embedder
 from app.rag.reranker import get_reranker
 
@@ -170,18 +174,33 @@ def _row_to_candidate(row) -> Candidate:
     )
 
 
+@asynccontextmanager
+async def _connection(db: AsyncSession | uuid.UUID) -> AsyncIterator[AsyncSession]:
+    """Use the caller's session, or open one for this tenant only for as long as needed."""
+    if isinstance(db, AsyncSession):
+        yield db
+    else:
+        async with tenant_session(db) as session:
+            yield session
+
+
 async def retrieve(
-    session: AsyncSession,
+    db: AsyncSession | uuid.UUID,
     reader: Reader,
     query: str,
     k_vector: int = 40,
     k_lexical: int = 40,
-    k_rerank: int = 20,
+    k_rerank: int | None = None,
     k_final: int = 6,
     mode: RetrievalMode = "hybrid_rerank",
 ) -> RetrievalResult:
     """`mode` exists for evaluation: production always uses hybrid_rerank. Without the
-    reranker, `score` is the fused/raw rank score and is not comparable to the threshold."""
+    reranker, `score` is the fused/raw rank score and is not comparable to the threshold.
+
+    Pass a tenant id instead of a session on hot paths: a database connection is then held
+    only for the two SQL queries, never while waiting for the GPU. (Holding it across model
+    inference exhausted the connection pool at 20 concurrent users in the load test.)
+    """
     timings: dict[str, int] = {}
     started = time.perf_counter()
     embedding = (await asyncio.to_thread(get_embedder().embed, [query]))[0]
@@ -196,32 +215,32 @@ async def retrieve(
         JOIN readable r ON r.id = d.id
     """
     started = time.perf_counter()
-    # Filtered HNSW: keep scanning the graph until enough rows pass the ACL filter.
-    await session.execute(text("SET LOCAL hnsw.iterative_scan = relaxed_order"))
-    vector_rows = (
-        []
-        if mode == "lexical"
-        else (
-            await session.execute(
-                text(
-                    base % "c.embedding <=> CAST(:qvec AS vector)" + " ORDER BY rank_score LIMIT :k"
-                ),
-                {**reader.params, "qvec": str(embedding), "k": k_vector},
-            )
-        ).all()
-    )
-    lexical_rows = []
+    vector_rows: list = []
+    lexical_rows: list = []
     tsquery = lexical_query(query) if mode != "vector" else None
-    if tsquery:
-        lexical_rows = (
-            await session.execute(
-                text(
-                    base % "ts_rank_cd(c.tsv, to_tsquery('simple', :tsq))"
-                    + " WHERE c.tsv @@ to_tsquery('simple', :tsq) ORDER BY rank_score DESC LIMIT :k"
-                ),
-                {**reader.params, "tsq": tsquery, "k": k_lexical},
-            )
-        ).all()
+    async with _connection(db) as session:
+        # Filtered HNSW: keep scanning the graph until enough rows pass the ACL filter.
+        await session.execute(text("SET LOCAL hnsw.iterative_scan = relaxed_order"))
+        if mode != "lexical":
+            vector_rows = (
+                await session.execute(
+                    text(
+                        base % "c.embedding <=> CAST(:qvec AS vector)"
+                        + " ORDER BY rank_score LIMIT :k"
+                    ),
+                    {**reader.params, "qvec": str(embedding), "k": k_vector},
+                )
+            ).all()
+        if tsquery:
+            lexical_rows = (
+                await session.execute(
+                    text(
+                        base % "ts_rank_cd(c.tsv, to_tsquery('simple', :tsq))"
+                        + " WHERE c.tsv @@ to_tsquery('simple', :tsq) ORDER BY rank_score DESC LIMIT :k"
+                    ),
+                    {**reader.params, "tsq": tsquery, "k": k_lexical},
+                )
+            ).all()
     timings["search"] = int((time.perf_counter() - started) * 1000)
 
     fused: dict[int, Candidate] = {}
@@ -233,6 +252,7 @@ async def retrieve(
         cand = fused.setdefault(row.id, _row_to_candidate(row))
         cand.lexical_rank = rank
         cand.rrf += 1 / (RRF_K + rank)
+    k_rerank = k_rerank or get_settings().rerank_candidates
     pool = sorted(fused.values(), key=lambda c: c.rrf, reverse=True)[:k_rerank]
     if mode != "hybrid_rerank":
         for cand in pool:

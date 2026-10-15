@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     max_upload_mb: int = 50
 
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    # Fused candidates passed to the cross-encoder; its cost grows linearly with this.
+    rerank_candidates: int = 20
     # Below this reranker score (0..1) the assistant says it does not know instead of
     # answering, so weak matches never become confident-sounding answers. Calibrated on the
     # eval set (python -m app.eval): 0.34-0.40 refused all 13 negative cases while wrongly
@@ -33,6 +35,13 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     ollama_url: str | None = None  # e.g. http://localhost:11434
     ollama_model: str = "qwen2.5:7b"
+
+    # Load testing only: replace every LLM call with a canned reply after a realistic delay,
+    # so the test measures this system (embedding, search, rerank, DB), not a provider's
+    # free-tier rate limit. Never enable in production.
+    fake_llm: bool = False
+    fake_llm_first_token_ms: int = 700
+    fake_llm_tokens_per_s: int = 250
 
 
 @lru_cache

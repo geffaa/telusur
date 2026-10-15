@@ -132,6 +132,21 @@
     </ul>
   </section>
 
+  <section aria-labelledby="load-h">
+    <h2 id="load-h">Under load — concurrent users on one laptop GPU, LLM stubbed to measure this system</h2>
+    <div class="scroll">
+      <table>
+        <tr><th>Rerank candidates</th><th>Recall@1</th><th>Peak chats / min</th><th>p95 first token, 20 users</th><th>Errors, 20 users</th></tr>
+        <tr class="best"><td>20 (default, quality first)</td><td>0.97</td><td>42</td><td>37 s</td><td>0%</td></tr>
+        <tr><td>10 (high-traffic setting)</td><td>0.95</td><td>65</td><td>21 s</td><td>0%</td></tr>
+      </table>
+    </div>
+    <ul class="learn">
+      <li><b>The load test found two concurrency bugs before any user did:</b> the embedder and reranker shared the GPU without a common lock (the process aborted at 5 users), and requests held a database connection while queued for the GPU (the pool ran dry at 20). Both fixed; 0% errors at 20 users.</li>
+      <li><b>The reranker is also the throughput ceiling.</b> Halving its candidates buys 54% more throughput for one question in 58 lost at rank 1 — a measured trade-off, exposed as a setting instead of a silent default.</li>
+    </ul>
+  </section>
+
   <section aria-labelledby="what-h">
     <h2 id="what-h">What it shows</h2>
     <div class="cols">

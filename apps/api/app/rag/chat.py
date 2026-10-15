@@ -261,7 +261,7 @@ async def answer(
     yield "status", {"stage": "searching"}
     async with tenant_session(user.tenant_id) as session:
         reader = await reader_for(session, user)
-        result = await retrieve(session, reader, search_query)
+    result = await retrieve(user.tenant_id, reader, search_query)
     meta["timings_ms"].update(result.timings_ms)
     meta["retrieval"] = result.debug()
 

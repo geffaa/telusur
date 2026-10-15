@@ -47,8 +47,17 @@ class Usage:
     output_tokens: int | None = None
 
 
+FAKE_ANSWER = (
+    "Berdasarkan dokumen yang tersedia, ketentuan tersebut diatur pada bagian yang dikutip [1]. "
+    "Besaran dan syaratnya mengikuti tabel serta prosedur yang tercantum di dokumen sumber [1]. "
+    "Untuk kasus khusus, persetujuan atasan langsung tetap diperlukan sesuai kebijakan [2]."
+)
+
+
 def providers() -> list[Provider]:
     s = get_settings()
+    if s.fake_llm:
+        return [Provider("fake", "", "", "fake-llm", "fake-llm")]
     found: list[Provider] = []
     if s.groq_api_key:
         found.append(
@@ -120,6 +129,11 @@ async def complete(
 
     Batch jobs pass a large `max_wait` to sit out rate limits instead of failing.
     """
+    if get_settings().fake_llm:
+        await asyncio.sleep(get_settings().fake_llm_first_token_ms / 1000 / 2)
+        # Echo the question back so query rewriting stays a no-op in load tests.
+        last = messages[-1]["content"].rsplit(":", 1)[-1].strip()
+        return last, Usage("fake", "fake-llm", 200, 20)
     errors = []
     for p in providers():
         body = _payload(p, messages, fast, False, max_tokens)
@@ -162,6 +176,16 @@ async def stream(
     max_wait: float = INTERACTIVE_MAX_WAIT,
 ) -> AsyncIterator[str]:
     """Yield answer text deltas; fills `usage` when the stream ends."""
+    settings = get_settings()
+    if settings.fake_llm:
+        usage.provider, usage.model = "fake", "fake-llm"
+        await asyncio.sleep(settings.fake_llm_first_token_ms / 1000)
+        words = FAKE_ANSWER.split(" ")
+        for i in range(0, len(words), 4):
+            yield " ".join(words[i : i + 4]) + " "
+            await asyncio.sleep(4 / settings.fake_llm_tokens_per_s)
+        usage.input_tokens, usage.output_tokens = 2500, len(words)
+        return
     errors = []
     for p in providers():
         waited = 0.0

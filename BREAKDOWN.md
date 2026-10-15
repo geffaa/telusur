@@ -296,12 +296,14 @@ Browser ──► Next.js 15 (App Router, shadcn/ui, PDF.js)
 - **Verifikasi:** tabel perbandingan berisi angka nyata dan hybrid + rerank terbukti terbaik. ✅
 
 ### M5 — Polish portfolio & deploy
-- [ ] Dataset demo publik: ±40 dokumen kebijakan fiktif perusahaan "PT Nusantara Sejahtera" (HR, Finance, IT, SOP) dalam ID+EN
-- [ ] Deploy Docker Compose ke VPS + Caddy HTTPS + akun demo per peran
-- [ ] README: diagram arsitektur, tabel hasil eval, penjelasan keamanan (RLS, ACL, prompt injection), cara self-host
-- [ ] Video demo 3 menit: ACL beda jawaban, sitasi, versioning, eval dashboard
-- [ ] Load test ringan (k6): 20 user bersamaan, catat p95
-- **Verifikasi:** orang luar bisa login ke demo dengan akun Staff/Manager/Admin dan mereproduksi skenario video.
+- [x] Dataset demo: 22 dokumen kebijakan fiktif PT Nusantara Sejahtera (ID + EN)
+- [ ] Deploy Docker Compose ke VPS + Caddy HTTPS + akun demo per peran (menunggu VPS)
+- [x] README: keputusan desain, hasil evaluasi, keamanan (RLS, ACL, prompt injection), cara menjalankan
+- [x] Video demo 2:43 + halaman studi kasus di GitHub Pages
+- [x] Highlight kutipan di dalam PDF (PDF.js, sorotan blok berurutan terbesar)
+- [x] Load test 1/5/10/20 pengguna bersamaan dengan LLM tiruan; dua bug konkurensi ditemukan dan diperbaiki (crash GPU MPS, pool koneksi habis)
+- [x] Pengaturan `RERANK_CANDIDATES` dengan trade-off kualitas vs throughput yang terukur
+- **Verifikasi:** semua kecuali deploy; demo dapat diputar di https://geffaa.github.io/telusur/.
 
 ## 12. Risiko & pertanyaan terbuka
 
