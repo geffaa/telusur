@@ -87,3 +87,14 @@ def test_markdown_parser_headings_and_tables():
         ("table", 0),
     ]
     assert parsed.blocks[1].text == "Paragraf satu lanjutan."
+
+
+def test_tables_are_linearized_for_the_reranker():
+    from app.rag.retrieval import linearize_table
+
+    md = "| Level | Hotel |\n|---|---|\n| Staff | Rp 750.000 |\n| Manager | Rp 1.250.000 |"
+    assert (
+        linearize_table(md)
+        == "Level: Staff; Hotel: Rp 750.000.\nLevel: Manager; Hotel: Rp 1.250.000."
+    )
+    assert linearize_table("plain text") == "plain text"

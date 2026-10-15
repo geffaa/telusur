@@ -11,7 +11,9 @@ async def test_api_errors_follow_accept_language(client):
     headers = await login(client, "nusantara", "hr")
     missing = f"/documents/{uuid.uuid4()}"
     en = await client.get(missing, headers=headers)
-    idn = await client.get(missing, headers={**headers, "Accept-Language": "id-ID,id;q=0.9,en;q=0.8"})
+    idn = await client.get(
+        missing, headers={**headers, "Accept-Language": "id-ID,id;q=0.9,en;q=0.8"}
+    )
     assert en.status_code == idn.status_code == 404
     assert en.json() == {"detail": "Document not found", "code": "document_not_found"}
     assert idn.json() == {"detail": "Dokumen tidak ditemukan", "code": "document_not_found"}
@@ -20,7 +22,9 @@ async def test_api_errors_follow_accept_language(client):
 async def test_login_error_is_translated(client):
     body = {"workspace": "nusantara", "email": "hr@nusantara.test", "password": "wrong"}
     res = await client.post("/auth/login", json=body, headers={"Accept-Language": "id"})
-    assert res.status_code == 401 and res.json()["detail"] == "Workspace, email, atau password salah"
+    assert (
+        res.status_code == 401 and res.json()["detail"] == "Workspace, email, atau password salah"
+    )
 
 
 def test_every_message_has_both_languages():

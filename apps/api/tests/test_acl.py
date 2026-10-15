@@ -63,7 +63,10 @@ async def test_restricted_document_is_hidden_from_listing_detail_and_file(client
     secret = await _secret_doc(client, admin)
 
     hr_id = secret["collection_id"]
-    staff_titles = {d["title"] for d in (await client.get(f"/collections/{hr_id}/documents", headers=staff)).json()}
+    staff_titles = {
+        d["title"]
+        for d in (await client.get(f"/collections/{hr_id}/documents", headers=staff)).json()
+    }
     assert SECRET_TITLE not in staff_titles and "Kebijakan Cuti Karyawan" in staff_titles
     for path in (f"/documents/{secret['id']}", f"/documents/{secret['id']}/file"):
         assert (await client.get(path, headers=staff)).status_code == 404
@@ -97,7 +100,9 @@ async def test_revoking_access_applies_immediately(client):
 async def test_employee_cannot_change_access(client):
     staff = await login(client, "nusantara", "staff")
     cols = (await client.get("/collections", headers=staff)).json()
-    res = await client.put(f"/collections/{cols[0]['id']}/access", headers=staff, json={"everyone": True})
+    res = await client.put(
+        f"/collections/{cols[0]['id']}/access", headers=staff, json={"everyone": True}
+    )
     assert res.status_code == 403
 
 
@@ -111,7 +116,9 @@ async def test_conversations_are_private_to_their_owner(client):
         await s.flush()
         convo_id = convo.id
     manager = await login(client, "nusantara", "manager")
-    assert (await client.get(f"/conversations/{convo_id}/messages", headers=manager)).status_code == 404
+    assert (
+        await client.get(f"/conversations/{convo_id}/messages", headers=manager)
+    ).status_code == 404
     assert (await client.delete(f"/conversations/{convo_id}", headers=manager)).status_code == 404
     ids = [c["id"] for c in (await client.get("/conversations", headers=manager)).json()]
     assert str(convo_id) not in ids
@@ -131,4 +138,7 @@ async def test_document_override_can_be_reverted_to_inherit(client):
     access = (await client.get(f"/documents/{secret['id']}/access", headers=admin)).json()
     assert access["inherit"] is False and not access["everyone"] and len(access["group_ids"]) == 1
     async with SessionLocal() as s:
-        assert await s.scalar(select(Document.id).where(Document.id == uuid.UUID(secret["id"]))) is None  # RLS
+        assert (
+            await s.scalar(select(Document.id).where(Document.id == uuid.UUID(secret["id"])))
+            is None
+        )  # RLS

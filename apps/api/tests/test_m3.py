@@ -15,7 +15,10 @@ from tests.conftest import login
 async def _sse(client, headers, message, conversation_id=None) -> dict:
     events: dict = {}
     async with client.stream(
-        "POST", "/chat", headers=headers, json={"message": message, "conversation_id": conversation_id}
+        "POST",
+        "/chat",
+        headers=headers,
+        json={"message": message, "conversation_id": conversation_id},
     ) as res:
         event = None
         async for line in res.aiter_lines():
@@ -48,14 +51,18 @@ async def test_unanswerable_question_becomes_clustered_gap_and_is_audited(client
     topic = next(c for c in clusters if any(marker in e["query"] for e in c["examples"]))
     assert topic["count"] >= 2 and topic["askers"] >= 2
 
-    res = await client.post("/knowledge-gaps/resolve", headers=admin, json={"gap_ids": topic["gap_ids"]})
+    res = await client.post(
+        "/knowledge-gaps/resolve", headers=admin, json={"gap_ids": topic["gap_ids"]}
+    )
     assert res.json()["resolved"] == topic["count"]
     clusters = (await client.get("/knowledge-gaps", headers=admin)).json()
     assert not any(marker in e["query"] for c in clusters for e in c["examples"])
 
     async with tenant_session(tid) as s:
         asked = await s.scalar(
-            select(AuditLog).where(AuditLog.action == "query.asked", AuditLog.target_label.contains(marker))
+            select(AuditLog).where(
+                AuditLog.action == "query.asked", AuditLog.target_label.contains(marker)
+            )
         )
     assert asked.meta["refused"] is True and asked.actor_name
 
@@ -76,12 +83,16 @@ async def test_feedback_only_on_own_answers(client):
     message_id = events["done"][0]["message_id"]
     conversation_id = events["conversation"][0]["id"]
     res = await client.put(
-        f"/messages/{message_id}/feedback", headers=staff, json={"rating": -1, "reason": "incomplete"}
+        f"/messages/{message_id}/feedback",
+        headers=staff,
+        json={"rating": -1, "reason": "incomplete"},
     )
     assert res.status_code == 204
     # Changing your mind updates the same row.
     await client.put(f"/messages/{message_id}/feedback", headers=staff, json={"rating": 1})
-    mine = (await client.get(f"/messages/feedback?conversation_id={conversation_id}", headers=staff)).json()
+    mine = (
+        await client.get(f"/messages/feedback?conversation_id={conversation_id}", headers=staff)
+    ).json()
     assert mine == {message_id: 1}
 
     manager = await login(client, "nusantara", "manager")
@@ -102,25 +113,30 @@ async def test_new_version_swaps_atomically_and_delete_hides_document(client, mo
 
     monkeypatch.setattr(documents_router, "enqueue_ingest", fake_enqueue)
     admin = await login(client, "nusantara", "hr")
-    col = (await client.post("/collections", headers=admin, json={"name": f"Versi {uuid.uuid4()}"})).json()
+    col = (
+        await client.post("/collections", headers=admin, json={"name": f"Versi {uuid.uuid4()}"})
+    ).json()
     v1 = f"# Panduan Parkir\n\n## Tarif\n\nParkir motor gratis. {uuid.uuid4()}\n"
     doc = (
         await client.post(
-            f"/collections/{col['id']}/documents", headers=admin,
+            f"/collections/{col['id']}/documents",
+            headers=admin,
             files={"file": ("parkir.md", v1.encode(), "text/markdown")},
         )
     ).json()
     await ingest_version(*queued.pop())
 
     same = await client.post(
-        f"/documents/{doc['id']}/versions", headers=admin,
+        f"/documents/{doc['id']}/versions",
+        headers=admin,
         files={"file": ("parkir.md", v1.encode(), "text/markdown")},
     )
     assert same.status_code == 409
 
     v2 = v1.replace("gratis", "Rp 2.000 per hari")
     res = await client.post(
-        f"/documents/{doc['id']}/versions", headers=admin,
+        f"/documents/{doc['id']}/versions",
+        headers=admin,
         files={"file": ("parkir-v2.md", v2.encode(), "text/markdown")},
     )
     assert res.status_code == 201
@@ -128,7 +144,8 @@ async def test_new_version_swaps_atomically_and_delete_hides_document(client, mo
     # Until v2 is indexed, v1 keeps answering.
     assert body["current"]["version"] == 1 and body["latest"]["version"] == 2
     busy = await client.post(
-        f"/documents/{doc['id']}/versions", headers=admin,
+        f"/documents/{doc['id']}/versions",
+        headers=admin,
         files={"file": ("parkir-v3.md", b"# x\n\ny", "text/markdown")},
     )
     assert busy.status_code == 409
@@ -147,7 +164,11 @@ async def test_new_version_swaps_atomically_and_delete_hides_document(client, mo
 
     assert (await client.delete(f"/documents/{doc['id']}", headers=admin)).status_code == 204
     assert (await client.get(f"/documents/{doc['id']}", headers=admin)).status_code == 404
-    log = (await client.get("/audit-logs?action=document.", headers=await login(client, "nusantara", "admin"))).json()
+    log = (
+        await client.get(
+            "/audit-logs?action=document.", headers=await login(client, "nusantara", "admin")
+        )
+    ).json()
     actions = [i["action"] for i in log["items"] if i["target_id"] == doc["id"]]
     assert actions[:3] == ["document.deleted", "document.version_uploaded", "document.uploaded"]
     async with tenant_session(tid) as s:
@@ -171,15 +192,22 @@ async def test_people_management_is_tenant_admin_only_and_audited(client):
     assert res.status_code == 200
 
     patched = await client.patch(
-        f"/users/{created['id']}", headers=admin,
+        f"/users/{created['id']}",
+        headers=admin,
         json={"role": "knowledge_admin", "group_ids": [groups["HR"], groups["Staff"]]},
     )
     assert patched.status_code == 200 and patched.json()["role"] == "knowledge_admin"
     log = (await client.get("/audit-logs?action=user.", headers=admin)).json()["items"]
     mine = [i for i in log if i["target_label"] == email]
-    assert {i["action"] for i in mine} == {"user.created", "user.role_changed", "user.groups_changed"}
+    assert {i["action"] for i in mine} == {
+        "user.created",
+        "user.role_changed",
+        "user.groups_changed",
+    }
     change = next(i for i in mine if i["action"] == "user.groups_changed")
-    assert change["before"] == {"groups": ["Staff"]} and change["after"] == {"groups": ["HR", "Staff"]}
+    assert change["before"] == {"groups": ["Staff"]} and change["after"] == {
+        "groups": ["HR", "Staff"]
+    }
 
     me = (await client.get("/auth/me", headers=admin)).json()
     demote = await client.patch(f"/users/{me['id']}", headers=admin, json={"role": "employee"})
@@ -195,7 +223,8 @@ async def test_access_check_shows_what_a_person_would_get(client):
     staff = users["staff@nusantara.test"]
     res = (
         await client.post(
-            "/access-check", headers=hr,
+            "/access-check",
+            headers=hr,
             json={"user_id": staff["id"], "question": "Berapa gaji pokok direktur utama?"},
         )
     ).json()
@@ -204,7 +233,9 @@ async def test_access_check_shows_what_a_person_would_get(client):
     assert readable["Struktur Remunerasi Direksi 2026"] is False
     assert readable["Kebijakan Cuti Karyawan"] is True
     assert res["retrieval"]["would_refuse"] is True
-    assert all(p["title"] != "Struktur Remunerasi Direksi 2026" for p in res["retrieval"]["passages"])
+    assert all(
+        p["title"] != "Struktur Remunerasi Direksi 2026" for p in res["retrieval"]["passages"]
+    )
 
 
 def test_cluster_groups_similar_vectors():

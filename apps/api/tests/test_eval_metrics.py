@@ -10,8 +10,9 @@ DOC, OTHER = uuid.uuid4(), uuid.uuid4()
 
 
 def case(kind="answerable", heading="Bab 1 > 1.2 Tarif") -> EvalCase:
-    return EvalCase(id=uuid.uuid4(), kind=kind, question="q", expected_document_id=DOC,
-                    expected_heading=heading)
+    return EvalCase(
+        id=uuid.uuid4(), kind=kind, question="q", expected_document_id=DOC, expected_heading=heading
+    )
 
 
 def cand(doc, heading):
@@ -19,8 +20,15 @@ def cand(doc, heading):
 
 
 def result(c: EvalCase, hit=None, doc_hit=None, top=0.9, refused=False, **kw) -> EvalResult:
-    return EvalResult(case_id=c.id, hit_rank=hit, doc_hit_rank=doc_hit, top_score=top,
-                      refused=refused, retrieval_ms=10, **kw)
+    return EvalResult(
+        case_id=c.id,
+        hit_rank=hit,
+        doc_hit_rank=doc_hit,
+        top_score=top,
+        refused=refused,
+        retrieval_ms=10,
+        **kw,
+    )
 
 
 def test_hit_rank_distinguishes_section_from_document():

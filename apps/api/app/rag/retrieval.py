@@ -131,8 +131,12 @@ class Candidate:
     score: float = 0.0  # reranker relevance, 0..1
 
     def passage(self) -> str:
+        """Text the reranker scores. Tables are linearized ("column: value; …" per row): the
+        cross-encoder reads them far better than Markdown pipes (measured on the allowance
+        table: 0.28 -> 0.57 for a hotel-limit question, 0.73 -> 0.95 for a direct one)."""
         header = f"{self.title} — {self.heading_path}" if self.heading_path else self.title
-        return f"{header}\n{self.content}"
+        body = linearize_table(self.content) if self.kind == "table" else self.content
+        return f"{header}\n{body}"
 
 
 @dataclass
@@ -147,6 +151,22 @@ class RetrievalResult:
             for c in self.candidates
         ]
         return json.loads(json.dumps(rows, default=str))  # JSON-safe (UUIDs) for JSONB
+
+
+def linearize_table(markdown: str) -> str:
+    """'| A | B |' rows -> 'A: x; B: y.' lines. Falls back to the input if it isn't a table."""
+    rows = [
+        [cell.strip() for cell in line.strip().strip("|").split("|")]
+        for line in markdown.splitlines()
+        if line.strip().startswith("|") and not set(line.replace("|", "").strip()) <= set("-: ")
+    ]
+    if len(rows) < 2:
+        return markdown
+    head, body = rows[0], rows[1:]
+    return "\n".join(
+        "; ".join(f"{h}: {v}" for h, v in zip(head, row, strict=False) if h or v) + "."
+        for row in body
+    )
 
 
 def lexical_query(query: str) -> str | None:
