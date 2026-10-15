@@ -2,6 +2,7 @@
 
 import { ExternalLink, FileText, Lock, X } from "lucide-react";
 import { Answer } from "@/components/chat/answer";
+import { PdfQuote } from "@/components/chat/pdf-quote";
 import { Button } from "@/components/ui/button";
 import { API_URL, type Source } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,7 @@ export function SourcePanel({
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto" data-scroll>
         <div className="space-y-3 px-4 py-4">
           {source.available === false ? (
             <p className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -85,13 +86,10 @@ export function SourcePanel({
             </>
           )}
         </div>
-        {isPdf && source.available !== false && (
-          <iframe
-            key={`${source.document_id}-${source.page_start}`}
-            src={`${fileUrl}#page=${source.page_start}&view=FitH`}
-            title={source.title}
-            className="h-[70vh] w-full border-t"
-          />
+        {isPdf && source.available !== false && source.quote && (
+          <div className="border-t">
+            <PdfQuote url={fileUrl} page={source.page_start} quote={source.quote} />
+          </div>
         )}
       </div>
     </div>
