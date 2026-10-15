@@ -1,5 +1,9 @@
 # Telusur
 
+**[▶ Tonton demo 2:43 dan studi kasus](https://geffaa.github.io/telusur/)** · video: [`docs/telusur-demo.mp4`](docs/telusur-demo.mp4)
+
+[![Jawaban dengan sitasi; panel sumber membuka PDF di halaman yang dikutip](docs/poster.jpg)](https://geffaa.github.io/telusur/)
+
 Asisten pengetahuan internal (RAG) untuk perusahaan: jawaban dari dokumen internal dengan sitasi,
 hanya dari dokumen yang boleh dilihat penanya. Rencana lengkap: [BREAKDOWN.md](BREAKDOWN.md).
 
@@ -52,6 +56,17 @@ Login demo: workspace `nusantara`, password `telusur123`:
 | `admin@nusantara.test` | Tenant Admin | kelola pengguna & grup, audit log |
 
 Tenant kedua: `garuda` (data terpisah total).
+
+## Rekam ulang demo
+
+Dengan API, worker, dan web berjalan serta data demo ter-seed:
+
+```bash
+cd demo && npm install && node record.mjs   # → demo/out/telusur-demo.mp4 (butuh ffmpeg dan Chrome)
+```
+
+Skrip memakai screencast Puppeteer per adegan dengan kursor dan keterangan, lalu menggabungkan
+klip menjadi H.264 dengan ffmpeg.
 
 ## Test
 

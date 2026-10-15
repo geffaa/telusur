@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telusur — Enterprise RAG Assistant</title>
+<meta name="description" content="Internal knowledge assistant that answers from company documents with page citations, enforces per-document access in retrieval, keeps an append-only audit log, and is measured with an evaluation harness. 2:43 demo.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://geffaa.github.io/telusur/">
+<meta property="og:title" content="Telusur — enterprise RAG assistant (portfolio)">
+<meta property="og:description" content="Permission-aware hybrid retrieval, cited streaming answers, audit log, and measured quality: Recall@1 0.97, faithfulness 0.97, 0 restricted-document leaks.">
+<meta property="og:image" content="https://geffaa.github.io/telusur/poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@500&display=swap">
+<style>
+  /* Telusur's own palette: warm neutral surfaces and one teal brand color. */
+  :root {
+    --paper: #F8F7F4; --card: #fff; --ink: #1F2633; --muted: #5E6675; --line: #E7E4DD;
+    --brand: #0E8478; --strong: #0B625A; --soft: #E2F3F0;
+    --info: #2F63C8; --info-soft: #E8EEFB; --warn: #A66A00; --warn-soft: #FBF1DC;
+    --font: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  .page > * { min-width: 0; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 17px/1.55 var(--font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1120px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 72px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 48px; }
+  .top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px; font-size: 15px; font-weight: 600; color: var(--muted); }
+  .mark { width: 52px; height: 52px; border-radius: 14px; background: var(--brand); display: grid; place-items: center; }
+  h1 { margin: 18px 0 0; font-size: clamp(3rem, 1.6rem + 6vw, 6.2rem); font-weight: 720; line-height: .92; letter-spacing: -.05em; }
+  h1 span { color: var(--brand); }
+  .lede { margin: 18px 0 0; max-width: 62ch; font-size: 20px; line-height: 1.45; color: var(--muted); }
+  .lede b { color: var(--ink); font-weight: 650; }
+  video { display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: 22px; background: var(--ink); box-shadow: 0 20px 50px -25px rgba(15, 40, 40, .45); }
+  .note { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+  h2 { margin: 0 0 14px; font-size: 15px; font-weight: 650; color: var(--muted); }
+  .chapters { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .chapters button { width: 100%; height: 100%; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 2px 14px; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 16px; background: var(--card); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
+  .chapters button:hover { border-color: var(--brand); }
+  .chapters button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+  .chapters time { grid-row: span 2; font: 500 15px/1.6 'Geist Mono', ui-monospace, monospace; color: var(--strong); }
+  .ch-title { font-weight: 650; }
+  .ch-desc { font-size: 15px; color: var(--muted); }
+  .chapters li[aria-current="true"] button { border-color: var(--brand); background: var(--soft); }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; overflow: hidden; font-size: 16px; }
+  th, td { padding: 12px 18px; text-align: right; white-space: nowrap; } th:first-child, td:first-child { text-align: left; white-space: normal; }
+  th { background: #F1EFEA; color: var(--muted); font-size: 13.5px; font-weight: 600; }
+  tr + tr td { border-top: 1px solid var(--line); }
+  tr.best td { background: var(--soft); color: var(--strong); font-weight: 650; }
+  .scroll { overflow-x: auto; border-radius: 18px; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  .stat { border: 1.5px solid var(--line); border-radius: 18px; background: var(--card); padding: 18px; display: grid; gap: 4px; }
+  .num { font-size: 38px; font-weight: 720; letter-spacing: -.03em; line-height: 1; color: var(--strong); }
+  .stat span:last-child { font-size: 14px; color: var(--muted); font-weight: 600; }
+  .learn { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+  .learn li { padding: 14px 18px; border-left: 3px solid var(--brand); background: var(--card); border-radius: 0 14px 14px 0; font-size: 16px; }
+  .learn b { font-weight: 650; }
+  .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .col { border-radius: 20px; padding: 22px; display: grid; gap: 10px; align-content: start; border: 1.5px solid transparent; }
+  .col p { margin: 0; font-weight: 700; font-size: 18px; }
+  .col ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; font-size: 15.5px; }
+  .c1 { background: var(--soft); border-color: #C9E8E2; }
+  .c2 { background: var(--info-soft); border-color: #D3DFF7; }
+  .c3 { background: var(--warn-soft); border-color: #F1E0B8; }
+  .shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .shots figure { margin: 0; }
+  .shots img { width: 100%; display: block; border-radius: 14px; border: 1.5px solid var(--line); }
+  .shots figcaption { font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px 24px; font-size: 14px; color: var(--muted); }
+  .foot a { color: var(--strong); font-weight: 650; }
+  @media (max-width: 760px) {
+    .cols, .chapters, .shots { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top"><span>Portfolio · AI engineer (RAG)</span><span>Yodhimas Geffananda</span></div>
+
+  <header>
+    <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h9M4 10.5h5M4 15h4"/><circle cx="15.5" cy="13.5" r="4"/><path d="m18.5 16.5 2.5 2.5"/></svg></div>
+    <h1>Telusur<span>.</span></h1>
+    <p class="lede">An internal knowledge assistant for mid-size and large companies. Employees ask in plain language and get answers <b>from company documents, with the page cited</b>, drawn only from <b>documents they are allowed to read</b>. Admins get versioning, an append-only audit log, unanswered-question topics, and a <b>measured evaluation</b> of answer quality.</p>
+  </header>
+
+  <section aria-label="Demo video">
+    <video id="demo" controls playsinline preload="metadata" poster="poster.jpg">
+      <source src="telusur-demo.mp4" type="video/mp4">
+    </video>
+    <p class="note">2:43 · no sound · Indonesian UI with captions · recorded locally on the fictional PT Nusantara Sejahtera policy set.</p>
+  </section>
+
+  <section aria-labelledby="ch-h">
+    <h2 id="ch-h">Chapters</h2>
+    <ol class="chapters" id="chapters">
+      <li><button type="button" data-t="4.2"><time>0:04</time><span class="ch-title">Cited answers</span><span class="ch-desc">Streaming answer with citation markers; the source panel opens the PDF at the cited page.</span></button></li>
+      <li><button type="button" data-t="28.8"><time>0:28</time><span class="ch-title">Follow-ups &amp; access control</span><span class="ch-desc">Context-aware follow-up. A Staff user asking about director pay is refused.</span></button></li>
+      <li><button type="button" data-t="48.7"><time>0:48</time><span class="ch-title">Same question, different reader</span><span class="ch-desc">A director gets the answer. An English question is answered from Indonesian documents.</span></button></li>
+      <li><button type="button" data-t="76"><time>1:16</time><span class="ch-title">Knowledge admin</span><span class="ch-desc">Overview, ingestion status, section-level chunks, per-document access rules.</span></button></li>
+      <li><button type="button" data-t="110.6"><time>1:50</time><span class="ch-title">Access check &amp; gaps</span><span class="ch-desc">Simulate what a person would retrieve, no LLM call. Unanswered questions grouped by topic.</span></button></li>
+      <li><button type="button" data-t="132.7"><time>2:12</time><span class="ch-title">Evaluation</span><span class="ch-desc">Four retrieval methods compared on 71 test questions, with per-question drill-down.</span></button></li>
+      <li><button type="button" data-t="142.2"><time>2:22</time><span class="ch-title">Audit log</span><span class="ch-desc">Append-only record of questions, sources used, and access changes.</span></button></li>
+      <li><button type="button" data-t="156.4"><time>2:36</time><span class="ch-title">Results</span><span class="ch-desc">The numbers, and what changed them.</span></button></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="eval-h">
+    <h2 id="eval-h">Measured, not claimed — 22 policy documents, 71 test questions (~30% English)</h2>
+    <div class="scroll">
+      <table>
+        <tr><th>Retrieval method</th><th>Recall@1</th><th>Recall@5</th><th>MRR</th><th>Correct refusals</th><th>False refusals</th></tr>
+        <tr><td>Keyword only</td><td>0.60</td><td>0.91</td><td>0.71</td><td>—</td><td>—</td></tr>
+        <tr><td>Vector only (bge-m3)</td><td>0.84</td><td>0.95</td><td>0.89</td><td>—</td><td>—</td></tr>
+        <tr><td>Hybrid (vector + keyword, RRF)</td><td>0.72</td><td>0.97</td><td>0.83</td><td>—</td><td>—</td></tr>
+        <tr><td>Hybrid + rerank, no query translation</td><td>0.95</td><td>1.00</td><td>0.97</td><td>92%</td><td>10%</td></tr>
+        <tr class="best"><td>Hybrid + rerank (production)</td><td>0.97</td><td>1.00</td><td>0.98</td><td>100%</td><td>2%</td></tr>
+      </table>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="num">0.97</span><span>Faithfulness (LLM judge)</span></div>
+      <div class="stat"><span class="num">0.94</span><span>Answer correctness</span></div>
+      <div class="stat"><span class="num">93%</span><span>Answers with citations</span></div>
+      <div class="stat"><span class="num">0 / 3</span><span>Restricted documents leaked</span></div>
+    </div>
+    <ul class="learn">
+      <li><b>The reranker is the component that matters.</b> It lifts Recall@1 from 0.84 to 0.97 and is the only score calibrated enough to decide "I don't know".</li>
+      <li><b>Hybrid without reranking was worse than vector alone.</b> Keyword search pulls loosely related passages up; it pays off only as a candidate source for the reranker.</li>
+      <li><b>Every false refusal was an English question</b> whose right passage was already ranked first; cross-lingual reranker scores were too low. Translating the query before search cut false refusals from 10% to 2%.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="what-h">
+    <h2 id="what-h">What it shows</h2>
+    <div class="cols">
+      <div class="col c1"><p>Retrieval &amp; answers</p><ul><li>Structure-aware chunking with page numbers</li><li>Vector + full-text, RRF, cross-encoder rerank</li><li>Streaming answers, verified citations, refusal threshold</li></ul></div>
+      <div class="col c2"><p>Enterprise controls</p><ul><li>Multi-tenant with Postgres row-level security</li><li>Per-collection and per-document access, enforced in SQL</li><li>Append-only, partitioned audit log</li></ul></div>
+      <div class="col c3"><p>Quality loop</p><ul><li>Generated test set + manual verification</li><li>LLM judge on a separate model</li><li>Thumbs-down feedback becomes a regression test</li></ul></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="shots-h">
+    <h2 id="shots-h">Screens</h2>
+    <div class="shots">
+      <figure><img src="screenshots/chat-source.jpg" alt="Chat answer with a citation; the source panel shows the quoted table and the PDF at page 2" loading="lazy"><figcaption>Answer with the source opened at the cited page</figcaption></figure>
+      <figure><img src="screenshots/chat-refusal.jpg" alt="The assistant refuses a question about a document the user cannot read" loading="lazy"><figcaption>Refusal when the only source is off-limits</figcaption></figure>
+      <figure><img src="screenshots/overview.jpg" alt="Admin overview with document status and seven-day usage" loading="lazy"><figcaption>Knowledge admin overview</figcaption></figure>
+      <figure><img src="screenshots/evaluation.jpg" alt="Evaluation table comparing retrieval methods" loading="lazy"><figcaption>Evaluation: methods compared on the same test set</figcaption></figure>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>FastAPI · Next.js · Postgres + pgvector · bge-m3 · bge-reranker-v2-m3 · Groq free tier. Company and documents are fictional.</span>
+    <a href="https://github.com/geffaa/telusur">Source code on GitHub →</a>
+  </footer>
+</div>
+<script>
+  const video = document.getElementById('demo');
+  const items = [...document.querySelectorAll('#chapters li')];
+  const starts = items.map((li) => Number(li.querySelector('button').dataset.t));
+  items.forEach((li, i) => li.querySelector('button').addEventListener('click', () => {
+    video.currentTime = starts[i];
+    video.play();
+    video.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }));
+  video.addEventListener('timeupdate', () => {
+    let current = -1;
+    starts.forEach((t, i) => { if (video.currentTime >= t) current = i; });
+    items.forEach((li, i) => li.setAttribute('aria-current', i === current ? 'true' : 'false'));
+  });
+</script>
+</body>
+</html>
