@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: telusur
+      POSTGRES_PASSWORD: telusur
+      POSTGRES_DB: telusur
+    ports: ["5441:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data, ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql:ro]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telusur"]
+      interval: 3s
+  redis:
+    image: redis:7-alpine
+    ports: ["6390:6379"]
+volumes:
+  pgdata:
