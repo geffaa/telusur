@@ -19,19 +19,25 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, type Access, type Group } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 type Mode = "inherit" | "everyone" | "groups";
 
-/** Summary used on buttons: "Semua karyawan", "HR, Manager", "Hanya admin". */
-export function accessSummary(access: Access | undefined, groups: Group[] | undefined) {
+/** Summary used on buttons: "All employees", "HR, Manager", "Admins only". */
+export function accessSummary(
+  access: Access | undefined,
+  groups: Group[] | undefined,
+  t: ReturnType<typeof useT>["t"],
+) {
   if (!access) return "…";
-  if (access.everyone) return "Semua karyawan";
+  if (access.everyone) return t("access.everyone");
   const names = access.group_ids.map((id) => groups?.find((g) => g.id === id)?.name).filter(Boolean);
-  return names.length ? names.join(", ") : "Hanya admin";
+  return names.length ? names.join(", ") : t("access.adminsOnly");
 }
 
 export function AccessDialog({ path, kind, name }: { path: string; kind: "collection" | "document"; name: string }) {
   const queryClient = useQueryClient();
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const { data: access } = useQuery({ queryKey: ["access", path], queryFn: () => api<Access>(path) });
   const { data: groups } = useQuery({ queryKey: ["groups"], queryFn: () => api<Group[]>("/groups") });
@@ -57,7 +63,7 @@ export function AccessDialog({ path, kind, name }: { path: string; kind: "collec
     onSuccess: (data) => {
       queryClient.setQueryData(["access", path], data);
       setOpen(false);
-      toast.success("Akses diperbarui", { description: "Berlaku untuk pertanyaan berikutnya." });
+      toast.success(t("access.updated"), { description: t("access.updatedHint") });
     },
     onError: (e) => toast.error(e.message),
   });
@@ -68,17 +74,15 @@ export function AccessDialog({ path, kind, name }: { path: string; kind: "collec
       <DialogTrigger asChild>
         <Button variant="outline">
           {restricted ? <Lock className="size-4" /> : <Users className="size-4" />}
-          <span className="max-w-48 truncate">{accessSummary(access, groups)}</span>
+          <span className="max-w-48 truncate">{accessSummary(access, groups, t)}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Siapa yang bisa membaca</DialogTitle>
+          <DialogTitle>{t("access.title")}</DialogTitle>
           <DialogDescription>
-            {kind === "collection"
-              ? `Berlaku untuk semua dokumen di "${name}", kecuali dokumen yang punya pengaturan sendiri.`
-              : `Mengatur akses "${name}" saja.`}{" "}
-            Admin selalu bisa mengelola, tetapi jawaban chat tetap mengikuti aturan ini.
+            {kind === "collection" ? t("access.collectionHint", { name }) : t("access.documentHint", { name })}{" "}
+            {t("access.adminNote")}
           </DialogDescription>
         </DialogHeader>
         {!access || !groups ? (
@@ -86,10 +90,10 @@ export function AccessDialog({ path, kind, name }: { path: string; kind: "collec
         ) : (
           <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="gap-3">
             {kind === "document" && (
-              <Option value="inherit" label="Ikuti collection" hint="Akses sama dengan collection-nya." />
+              <Option value="inherit" label={t("access.inherit")} hint={t("access.inheritHint")} />
             )}
-            <Option value="everyone" label="Semua karyawan" hint="Setiap akun di workspace ini." />
-            <Option value="groups" label="Grup tertentu" hint="Hanya anggota grup yang dipilih." />
+            <Option value="everyone" label={t("access.everyone")} hint={t("access.everyoneHint")} />
+            <Option value="groups" label={t("access.groups")} hint={t("access.groupsHint")} />
             {mode === "groups" && (
               <div className="ml-7 space-y-2 rounded-md border p-3">
                 {groups.map((g) => (
@@ -101,11 +105,11 @@ export function AccessDialog({ path, kind, name }: { path: string; kind: "collec
                       }
                     />
                     <span className="flex-1">{g.name}</span>
-                    <span className="text-xs text-muted-foreground">{g.member_count} orang</span>
+                    <span className="text-xs text-muted-foreground">{t("access.members", { n: g.member_count })}</span>
                   </Label>
                 ))}
                 {selected.length === 0 && (
-                  <p className="text-xs text-muted-foreground">Tanpa grup, hanya admin yang bisa melihat.</p>
+                  <p className="text-xs text-muted-foreground">{t("access.noGroups")}</p>
                 )}
               </div>
             )}
@@ -113,10 +117,10 @@ export function AccessDialog({ path, kind, name }: { path: string; kind: "collec
         )}
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
-            Batal
+            {t("common.cancel")}
           </Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending || !access}>
-            Simpan
+            {t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

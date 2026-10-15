@@ -11,9 +11,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api, type GapCluster } from "@/lib/api";
 import { formatDate, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export default function GapsPage() {
   const queryClient = useQueryClient();
+  const { t } = useT();
   const { data, isLoading } = useQuery({
     queryKey: ["gaps"],
     queryFn: () => api<GapCluster[]>("/knowledge-gaps"),
@@ -22,7 +24,7 @@ export default function GapsPage() {
     mutationFn: (ids: string[]) =>
       api<{ resolved: number }>("/knowledge-gaps/resolve", { method: "POST", body: JSON.stringify({ gap_ids: ids }) }),
     onSuccess: (r) => {
-      toast.success(`${r.resolved} pertanyaan ditandai selesai`);
+      toast.success(t("gaps.resolved", { n: r.resolved }));
       queryClient.invalidateQueries({ queryKey: ["gaps"] });
       queryClient.invalidateQueries({ queryKey: ["overview"] });
     },
@@ -32,25 +34,25 @@ export default function GapsPage() {
   return (
     <>
       <PageHeader
-        title="Pertanyaan tak terjawab"
-        description="Pertanyaan yang tidak bisa dijawab dari dokumen, dikelompokkan per topik. Unggah dokumen yang menjawabnya, lalu tandai selesai."
+        title={t("gaps.title")}
+        description={t("gaps.subtitle")}
       />
       {isLoading && <Skeleton className="h-48 rounded-lg" />}
       {data?.length === 0 && (
         <div className="surface px-6 py-14 text-center">
-          <p className="font-medium">Tidak ada pertanyaan yang tertunda</p>
+          <p className="font-medium">{t("gaps.emptyTitle")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Setiap pertanyaan yang tidak terjawab akan muncul di sini, dikelompokkan menurut maknanya.
+            {t("gaps.emptyText")}
           </p>
         </div>
       )}
       {data && data.length > 0 && (
         <div className="overflow-hidden surface">
           <div className="hidden grid-cols-[minmax(0,1fr)_6rem_6rem_9rem_8rem] gap-4 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground md:grid">
-            <span>Topik (pertanyaan terbaru)</span>
-            <span className="text-right">Penanya</span>
-            <span className="text-right">Pertanyaan</span>
-            <span className="text-right">Terakhir</span>
+            <span>{t("gaps.col.topic")}</span>
+            <span className="text-right">{t("gaps.col.askers")}</span>
+            <span className="text-right">{t("gaps.col.questions")}</span>
+            <span className="text-right">{t("gaps.col.last")}</span>
             <span />
           </div>
           <ul className="divide-y">
@@ -61,9 +63,9 @@ export default function GapsPage() {
         </div>
       )}
       <p className="mt-4 text-xs text-muted-foreground">
-        Pertanyaan dikelompokkan otomatis berdasarkan kemiripan makna. Penanya dihitung per orang, bukan per pertanyaan.{" "}
+        {t("gaps.footnote")}{" "}
         <Link href="/collections" className="underline">
-          Unggah dokumen
+          {t("gaps.upload")}
         </Link>
       </p>
     </>
@@ -72,6 +74,7 @@ export default function GapsPage() {
 
 function GapRow({ cluster, onResolve, busy }: { cluster: GapCluster; onResolve: () => void; busy: boolean }) {
   const [open, setOpen] = useState(false);
+  const { t } = useT();
   const more = cluster.examples.length > 1;
   return (
     <li>
@@ -91,7 +94,7 @@ function GapRow({ cluster, onResolve, busy }: { cluster: GapCluster; onResolve: 
           <span className="min-w-0">
             <span className="block text-sm font-medium">{cluster.label}</span>
             <span className="block text-xs text-muted-foreground md:hidden">
-              {cluster.askers} penanya · {cluster.count} pertanyaan · {timeAgo(cluster.last_asked)}
+              {t("gaps.meta", { askers: cluster.askers, count: cluster.count, when: timeAgo(cluster.last_asked) })}
             </span>
           </span>
         </button>
@@ -102,7 +105,7 @@ function GapRow({ cluster, onResolve, busy }: { cluster: GapCluster; onResolve: 
         </span>
         <div className="row-span-2 flex justify-end md:row-span-1">
           <Button size="sm" variant="outline" onClick={onResolve} disabled={busy}>
-            <Check className="size-3.5" /> Selesai
+            <Check className="size-3.5" /> {t("gaps.resolve")}
           </Button>
         </div>
       </div>
@@ -115,7 +118,7 @@ function GapRow({ cluster, onResolve, busy }: { cluster: GapCluster; onResolve: 
             </li>
           ))}
           {cluster.count > cluster.examples.length && (
-            <li className="text-xs text-muted-foreground">dan {cluster.count - cluster.examples.length} lainnya</li>
+            <li className="text-xs text-muted-foreground">{t("gaps.more", { n: cluster.count - cluster.examples.length })}</li>
           )}
         </ul>
       )}

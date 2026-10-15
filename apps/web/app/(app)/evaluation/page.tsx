@@ -27,7 +27,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   api,
-  MODE_LABEL,
   type DocumentItem,
   type EvalCaseItem,
   type EvalMetrics,
@@ -37,62 +36,39 @@ import {
 } from "@/lib/api";
 import { formatDate, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 type Column = {
   key: keyof EvalMetrics;
-  label: string;
-  hint: string;
+  /** Standard metric names stay as-is in every language; others are translated. */
+  label: string | { key: MessageKey };
+  hint: MessageKey;
   lowerIsBetter?: boolean;
   ms?: boolean;
 };
 
 const COLUMNS: Column[] = [
-  {
-    key: "recall_at_1",
-    label: "Recall@1",
-    hint: "Sumber yang benar ada di peringkat pertama",
-  },
-  {
-    key: "recall_at_5",
-    label: "Recall@5",
-    hint: "Sumber yang benar ada di 5 teratas",
-  },
-  { key: "mrr", label: "MRR", hint: "Rata-rata 1/peringkat sumber yang benar" },
-  {
-    key: "refusal_accuracy",
-    label: "Tolak benar",
-    hint: "Pertanyaan tanpa jawaban/terlarang yang ditolak",
-  },
+  { key: "recall_at_1", label: "Recall@1", hint: "eval.col.recall1.hint" },
+  { key: "recall_at_5", label: "Recall@5", hint: "eval.col.recall5.hint" },
+  { key: "mrr", label: "MRR", hint: "eval.col.mrr.hint" },
+  { key: "refusal_accuracy", label: { key: "eval.col.refusal" }, hint: "eval.col.refusal.hint" },
   {
     key: "false_refusal_rate",
-    label: "Tolak keliru",
-    hint: "Pertanyaan yang bisa dijawab tetapi ditolak",
+    label: { key: "eval.col.falseRefusal" },
+    hint: "eval.col.falseRefusal.hint",
     lowerIsBetter: true,
   },
-  {
-    key: "faithfulness",
-    label: "Faithfulness",
-    hint: "Klaim jawaban didukung sumber (dinilai juri LLM)",
-  },
-  {
-    key: "correctness",
-    label: "Correctness",
-    hint: "Jawaban sesuai jawaban acuan (dinilai juri LLM)",
-  },
+  { key: "faithfulness", label: "Faithfulness", hint: "eval.col.faithfulness.hint" },
+  { key: "correctness", label: "Correctness", hint: "eval.col.correctness.hint" },
   {
     key: "retrieval_ms_p50",
-    label: "Latensi p50",
-    hint: "Median waktu pencarian",
+    label: { key: "eval.col.latency" },
+    hint: "eval.col.latency.hint",
     lowerIsBetter: true,
     ms: true,
   },
 ];
-
-const KIND_LABEL = {
-  answerable: "Bisa dijawab",
-  unanswerable: "Tanpa jawaban",
-  restricted: "Terlarang",
-};
 
 function fmt(col: Column, v: number | null | undefined) {
   if (v === null || v === undefined) return "—";
@@ -109,6 +85,7 @@ export default function EvaluationPage() {
 
 function Evaluation() {
   const params = useSearchParams();
+  const { t } = useT();
   const [tab, setTab] = useState<"results" | "cases">(
     params.get("tab") === "cases" ? "cases" : "results",
   );
@@ -136,11 +113,11 @@ function Evaluation() {
   return (
     <>
       <PageHeader
-        title="Evaluasi kualitas"
-        description="Mengukur apakah asisten menemukan sumber yang benar, menolak saat seharusnya, dan menjawab sesuai dokumen."
+        title={t("eval.title")}
+        description={t("eval.subtitle")}
         actions={
           <Button onClick={() => setStarting(true)} disabled={!!active}>
-            <Play className="size-4" /> Jalankan evaluasi
+            <Play className="size-4" /> {t("eval.run")}
           </Button>
         }
       />
@@ -149,7 +126,7 @@ function Evaluation() {
         <div className="mb-6 surface px-4 py-3">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span>
-              Menjalankan <span className="font-medium">{active.name}</span>
+              {t("eval.running", { name: active.name })}
             </span>
             <span className="text-muted-foreground tabular-nums">
               {active.progress}/{active.case_count || "…"}
@@ -165,8 +142,7 @@ function Evaluation() {
           </div>
           {active.config.answers && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Evaluasi jawaban mengikuti batas token per menit layanan AI
-              gratis, jadi berjalan perlahan.
+              {t("eval.slowNote")}
             </p>
           )}
         </div>
@@ -180,8 +156,8 @@ function Evaluation() {
       >
         {(
           [
-            ["results", "Hasil per pertanyaan"],
-            ["cases", "Kasus uji"],
+            ["results", t("eval.tab.results")],
+            ["cases", t("eval.tab.cases")],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -206,10 +182,11 @@ function Evaluation() {
 }
 
 function ComparisonTable({ runs }: { runs: EvalRunItem[] }) {
+  const { t } = useT();
   if (!runs.length) {
     return (
       <p className="surface px-6 py-10 text-center text-sm text-muted-foreground">
-        Belum ada hasil. Jalankan evaluasi untuk melihat angka.
+        {t("eval.noResults")}
       </p>
     );
   }
@@ -230,17 +207,17 @@ function ComparisonTable({ runs }: { runs: EvalRunItem[] }) {
         <table className="w-full text-sm">
           <thead className="table-head">
             <tr>
-              <th className="px-4 py-2 text-left font-medium">Konfigurasi</th>
+              <th className="px-4 py-2 text-left font-medium">{t("eval.col.config")}</th>
               {COLUMNS.map((c) => (
                 <th
                   key={c.key}
                   className="px-3 py-2 text-right font-medium whitespace-nowrap"
-                  title={c.hint}
+                  title={t(c.hint)}
                 >
-                  {c.label}
+                  {typeof c.label === "string" ? c.label : t(c.label.key)}
                 </th>
               ))}
-              <th className="px-4 py-2 text-right font-medium">Dijalankan</th>
+              <th className="px-4 py-2 text-right font-medium">{t("eval.col.ran")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -248,16 +225,16 @@ function ComparisonTable({ runs }: { runs: EvalRunItem[] }) {
               <tr key={r.id}>
                 <td className="px-4 py-2.5 whitespace-nowrap">
                   <span className="font-medium">
-                    {MODE_LABEL[r.config.mode]}
+                    {t(`eval.mode.${r.config.mode}`)}
                   </span>
                   {r.config.answers && (
                     <span className="ml-1.5 text-xs text-muted-foreground">
-                      + jawaban
+                      {t("eval.withAnswers")}
                     </span>
                   )}
                   {r.config.translate === false && (
                     <span className="ml-1.5 text-xs text-muted-foreground">
-                      tanpa terjemahan
+                      {t("eval.noTranslation")}
                     </span>
                   )}
                   {r.config.rerank_candidates !== undefined && r.config.rerank_candidates !== 20 && (
@@ -297,24 +274,26 @@ function ComparisonTable({ runs }: { runs: EvalRunItem[] }) {
         </table>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        Tebal = terbaik di kolomnya. Penolakan hanya berlaku untuk konfigurasi
-        dengan reranker (skor lain tidak sebanding dengan ambang).
+        {t("eval.footnote")}
         {reference?.suggested_threshold != null &&
-          ` Ambang saat ini ${reference.threshold}; ambang yang disarankan dari data ini ${reference.suggested_threshold}.`}
+          t("eval.threshold", {
+            current: reference.threshold ?? "",
+            suggested: reference.suggested_threshold,
+          })}
       </p>
     </section>
   );
 }
 
-function rankLabel(r: EvalResultItem) {
+function rankLabel(r: EvalResultItem, t: ReturnType<typeof useT>["t"]) {
   if (r.kind !== "answerable")
-    return r.refused ? "Ditolak ✓" : "Tidak ditolak ✗";
-  if (r.refused) return "Ditolak ✗";
+    return r.refused ? t("eval.rank.refusedOk") : t("eval.rank.notRefused");
+  if (r.refused) return t("eval.rank.refusedWrong");
   return r.hit_rank
     ? `#${r.hit_rank}`
     : r.doc_hit_rank
-      ? `dok #${r.doc_hit_rank}`
-      : "tidak ketemu";
+      ? t("eval.rank.doc", { n: r.doc_hit_rank })
+      : t("eval.rank.missed");
 }
 
 function failed(r: EvalResultItem) {
@@ -327,6 +306,7 @@ function failed(r: EvalResultItem) {
 }
 
 function Results({ runs }: { runs: EvalRunItem[] }) {
+  const { t } = useT();
   const [runId, setRunId] = useState<string | null>(null);
   const [baseId, setBaseId] = useState<string>("none");
   const [onlyFailed, setOnlyFailed] = useState(true);
@@ -373,12 +353,12 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">Tanpa pembanding</SelectItem>
+            <SelectItem value="none">{t("eval.noBaseline")}</SelectItem>
             {runs
               .filter((r) => r.id !== current)
               .map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  Bandingkan dengan {runLabel(r)}
+                  {t("eval.compareWith", { run: runLabel(r) })}
                 </SelectItem>
               ))}
           </SelectContent>
@@ -389,11 +369,11 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
               checked={onlyFailed}
               onCheckedChange={(v) => setOnlyFailed(!!v)}
             />{" "}
-            Hanya yang gagal
+            {t("eval.onlyFailed")}
           </Label>
         )}
         <span className="text-sm text-muted-foreground">
-          {rows?.length ?? 0} pertanyaan
+          {t("eval.questions", { n: rows?.length ?? 0 })}
         </span>
       </div>
 
@@ -402,14 +382,14 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
         <table className="w-full text-sm">
           <thead className="table-head">
             <tr>
-              <th className="px-4 py-2 font-medium">Pertanyaan</th>
-              <th className="px-3 py-2 font-medium">Jenis</th>
+              <th className="px-4 py-2 font-medium">{t("eval.col.question")}</th>
+              <th className="px-3 py-2 font-medium">{t("eval.col.kind")}</th>
               {baseId !== "none" && (
-                <th className="px-3 py-2 text-right font-medium">Sebelumnya</th>
+                <th className="px-3 py-2 text-right font-medium">{t("eval.col.before")}</th>
               )}
-              <th className="px-3 py-2 text-right font-medium">Hasil</th>
-              <th className="px-3 py-2 text-right font-medium">Skor</th>
-              <th className="px-3 py-2 text-right font-medium">Benar</th>
+              <th className="px-3 py-2 text-right font-medium">{t("eval.col.result")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("eval.col.score")}</th>
+              <th className="px-3 py-2 text-right font-medium">{t("eval.col.correct")}</th>
               <th className="w-8" />
             </tr>
           </thead>
@@ -425,11 +405,11 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
                   >
                     <td className="max-w-xl px-4 py-2">{r.question}</td>
                     <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
-                      {KIND_LABEL[r.kind]}
+                      {t(`eval.kind.${r.kind}`)}
                     </td>
                     {baseId !== "none" && (
                       <td className="px-3 py-2 text-right whitespace-nowrap text-muted-foreground">
-                        {b && rankLabel(b)}
+                        {b && rankLabel(b, t)}
                       </td>
                     )}
                     <td
@@ -438,7 +418,7 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
                         failed(r) && "text-danger",
                       )}
                     >
-                      {rankLabel(r)}
+                      {rankLabel(r, t)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {r.top_score.toFixed(3)}
@@ -472,8 +452,8 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
                   className="px-4 py-10 text-center text-muted-foreground"
                 >
                   {baseId !== "none"
-                    ? "Tidak ada perubahan dibanding run pembanding."
-                    : "Semua pertanyaan lolos."}
+                    ? t("eval.noChanges")
+                    : t("eval.allPassed")}
                 </td>
               </tr>
             )}
@@ -485,15 +465,16 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
 }
 
 function ResultDetail({ r }: { r: EvalResultItem }) {
+  const { t } = useT();
   return (
     <div className="grid gap-4 text-xs lg:grid-cols-2">
       <div className="space-y-2">
         <p>
           <span className="text-muted-foreground">
-            Sumber yang diharapkan:{" "}
+            {t("eval.expectedSource")}{" "}
           </span>
           {r.expected_document_title ??
-            (r.kind === "unanswerable" ? "tidak ada (harus ditolak)" : "—")}
+            (r.kind === "unanswerable" ? t("eval.mustRefuse") : "—")}
           {r.expected_heading && (
             <span className="text-muted-foreground">
               {" "}
@@ -503,19 +484,19 @@ function ResultDetail({ r }: { r: EvalResultItem }) {
         </p>
         {r.expected_answer && (
           <p>
-            <span className="text-muted-foreground">Jawaban acuan: </span>
+            <span className="text-muted-foreground">{t("eval.reference")} </span>
             {r.expected_answer}
           </p>
         )}
         {r.answer && (
           <p className="whitespace-pre-wrap">
-            <span className="text-muted-foreground">Jawaban asisten: </span>
+            <span className="text-muted-foreground">{t("eval.answer")} </span>
             {r.answer}
           </p>
         )}
         {r.judge_notes && (
           <p>
-            <span className="text-muted-foreground">Catatan juri: </span>
+            <span className="text-muted-foreground">{t("eval.judge")} </span>
             {r.judge_notes}
             {r.faithfulness !== null &&
               ` (faithfulness ${r.faithfulness.toFixed(1)})`}
@@ -545,6 +526,7 @@ function ResultDetail({ r }: { r: EvalResultItem }) {
 
 function Cases() {
   const queryClient = useQueryClient();
+  const { t } = useT();
   const { data, isLoading } = useQuery({
     queryKey: ["eval-cases"],
     queryFn: () => api<EvalCaseItem[]>("/eval/cases"),
@@ -588,8 +570,8 @@ function Cases() {
         <div className="segmented" role="tablist">
           {(
             [
-              ["todo", "Perlu ditinjau", (data?.length ?? 0) - verified],
-              ["all", "Semua", data?.length ?? 0],
+              ["todo", t("eval.toReview"), (data?.length ?? 0) - verified],
+              ["all", t("eval.all"), data?.length ?? 0],
             ] as const
           ).map(([key, label, n]) => (
             <button
@@ -603,8 +585,7 @@ function Cases() {
           ))}
         </div>
         <span className="text-muted-foreground">
-          {verified} dari {data?.length ?? 0} sudah diverifikasi. Kasus dibuat
-          otomatis dari dokumen; periksa sebelum memercayai angkanya.
+          {t("eval.verifiedCount", { verified, total: data?.length ?? 0 })}
         </span>
       </div>
       {isLoading && <Skeleton className="h-40 rounded-lg" />}
@@ -620,8 +601,8 @@ function Cases() {
                 <p className="text-muted-foreground">{c.expected_answer}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                {KIND_LABEL[c.kind]} · ditanya sebagai {c.ask_as}
-                {c.source === "feedback" && " · dari feedback"}
+                {t("eval.askedAs", { kind: t(`eval.kind.${c.kind}`), name: c.ask_as })}
+                {c.source === "feedback" && t("eval.fromFeedback")}
               </p>
             </div>
             <div className="text-xs">
@@ -636,7 +617,7 @@ function Cases() {
                   }
                 >
                   <SelectTrigger className="h-8 w-full text-xs">
-                    <SelectValue placeholder="Pilih dokumen sumber" />
+                    <SelectValue placeholder={t("eval.pickSource")} />
                   </SelectTrigger>
                   <SelectContent>
                     {docs?.map((d) => (
@@ -649,8 +630,8 @@ function Cases() {
               ) : (
                 <p className="text-muted-foreground">
                   {c.kind === "restricted"
-                    ? `Harus ditolak (${c.expected_document_title})`
-                    : "Harus ditolak"}
+                    ? t("eval.mustRefuseDoc", { title: c.expected_document_title ?? "" })
+                    : t("eval.mustRefuseShort")}
                 </p>
               )}
               {c.expected_heading && (
@@ -672,14 +653,14 @@ function Cases() {
                 disabled={c.kind === "answerable" && !c.expected_document_id}
               >
                 <Check className="size-3.5" />{" "}
-                {c.verified ? "Terverifikasi" : "Verifikasi"}
+                {c.verified ? t("eval.verified") : t("eval.verify")}
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
                 className="size-8 text-muted-foreground"
                 onClick={() => remove.mutate(c.id)}
-                aria-label="Hapus kasus uji"
+                aria-label={t("eval.deleteCase")}
               >
                 <Trash2 className="size-3.5" />
               </Button>
@@ -699,6 +680,7 @@ function StartDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { t } = useT();
   const [mode, setMode] = useState<RetrievalMode>("hybrid_rerank");
   const [answers, setAnswers] = useState(false);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -722,14 +704,14 @@ function StartDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Jalankan evaluasi</DialogTitle>
+          <DialogTitle>{t("eval.start.title")}</DialogTitle>
           <DialogDescription>
-            Hasilnya muncul di tabel perbandingan begitu selesai.
+            {t("eval.start.hint")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Metode pencarian</Label>
+            <Label>{t("eval.start.method")}</Label>
             <Select
               value={mode}
               onValueChange={(v) => setMode(v as RetrievalMode)}
@@ -738,10 +720,10 @@ function StartDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(MODE_LABEL) as RetrievalMode[]).map((m) => (
+                {(["vector", "lexical", "hybrid", "hybrid_rerank"] as RetrievalMode[]).map((m) => (
                   <SelectItem key={m} value={m}>
-                    {MODE_LABEL[m]}
-                    {m === "hybrid_rerank" && " (produksi)"}
+                    {t(`eval.mode.${m}`)}
+                    {m === "hybrid_rerank" && t("eval.start.production")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -755,10 +737,9 @@ function StartDialog({
               className="mt-0.5"
             />
             <span>
-              Nilai juga kualitas jawaban
+              {t("eval.start.answers")}
               <span className="block text-xs text-muted-foreground">
-                Memanggil AI untuk menjawab dan menilai setiap pertanyaan.
-                Sekitar 20–30 menit di layanan gratis.
+                {t("eval.start.answersHint")}
               </span>
             </span>
           </Label>
@@ -767,15 +748,15 @@ function StartDialog({
               checked={verifiedOnly}
               onCheckedChange={(v) => setVerifiedOnly(!!v)}
             />{" "}
-            Hanya kasus terverifikasi
+            {t("eval.start.verifiedOnly")}
           </Label>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
-            Batal
+            {t("common.cancel")}
           </Button>
           <Button onClick={() => start.mutate()} disabled={start.isPending}>
-            <Play className="size-4" /> Mulai
+            <Play className="size-4" /> {t("eval.start.go")}
           </Button>
         </DialogFooter>
       </DialogContent>

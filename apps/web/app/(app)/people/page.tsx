@@ -23,14 +23,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMe } from "@/hooks/use-me";
-import { api, ROLE_LABEL, type Group, type Role, type UserItem } from "@/lib/api";
+import { api, type Group, type Role, type UserItem } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
+import { useT } from "@/lib/i18n";
 
-const ROLES = Object.keys(ROLE_LABEL) as Role[];
+const ROLES: Role[] = ["employee", "knowledge_admin", "tenant_admin"];
 
 export default function PeoplePage() {
   const { data: me } = useMe();
   const editable = me?.role === "tenant_admin";
+  const { t } = useT();
   const [tab, setTab] = useState<"users" | "groups">("users");
   const { data: users, isLoading } = useQuery({ queryKey: ["users"], queryFn: () => api<UserItem[]>("/users") });
   const { data: groups } = useQuery({ queryKey: ["groups"], queryFn: () => api<Group[]>("/groups") });
@@ -43,17 +45,17 @@ export default function PeoplePage() {
   return (
     <>
       <PageHeader
-        title="Pengguna & grup"
+        title={t("people.title")}
         description={
           editable
-            ? "Peran menentukan apa yang bisa dikelola; grup menentukan dokumen apa yang bisa dibaca."
-            : "Hanya Tenant Admin yang dapat mengubah pengguna dan grup."
+            ? t("people.editableHint")
+            : t("people.readonlyHint")
         }
         actions={
           editable &&
           tab === "users" && (
             <Button onClick={() => setCreating(true)}>
-              <Plus className="size-4" /> Tambah pengguna
+              <Plus className="size-4" /> {t("people.add")}
             </Button>
           )
         }
@@ -62,8 +64,8 @@ export default function PeoplePage() {
         <div className="segmented" role="tablist">
           {(
             [
-              ["users", "Pengguna", users?.length],
-              ["groups", "Grup", groups?.length],
+              ["users", t("people.users"), users?.length],
+              ["groups", t("people.groupsTab"), groups?.length],
             ] as const
           ).map(([key, label, n]) => (
             <button
@@ -80,7 +82,7 @@ export default function PeoplePage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari nama atau email"
+            placeholder={t("people.search")}
             className="w-full sm:w-64"
           />
         )}
@@ -91,10 +93,10 @@ export default function PeoplePage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Nama</TableHead>
-                <TableHead>Peran</TableHead>
-                <TableHead>Grup</TableHead>
-                <TableHead className="text-right">Bergabung</TableHead>
+                <TableHead>{t("people.col.name")}</TableHead>
+                <TableHead>{t("people.col.role")}</TableHead>
+                <TableHead>{t("people.col.groups")}</TableHead>
+                <TableHead className="text-right">{t("people.col.joined")}</TableHead>
                 {editable && <TableHead className="w-12" />}
               </TableRow>
             </TableHeader>
@@ -114,7 +116,7 @@ export default function PeoplePage() {
                       <div className="min-w-0">
                         <p className="font-medium">
                           {u.name}
-                          {u.id === me?.id && <span className="ml-2 text-xs font-normal text-muted-foreground">Anda</span>}
+                          {u.id === me?.id && <span className="ml-2 text-xs font-normal text-muted-foreground">{t("people.you")}</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">{u.email}</p>
                       </div>
@@ -127,7 +129,7 @@ export default function PeoplePage() {
                     {u.group_ids.length ? (
                       u.group_ids.map(groupName).sort().join(", ")
                     ) : (
-                      <span className="text-muted-foreground">Tanpa grup</span>
+                      <span className="text-muted-foreground">{t("people.noGroups")}</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right text-sm whitespace-nowrap text-muted-foreground">
@@ -135,7 +137,7 @@ export default function PeoplePage() {
                   </TableCell>
                   {editable && (
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="size-8" onClick={() => setEditing(u)} aria-label={`Ubah ${u.name}`}>
+                      <Button variant="ghost" size="icon" className="size-8" onClick={() => setEditing(u)} aria-label={t("people.edit", { name: u.name })}>
                         <Pencil className="size-3.5" />
                       </Button>
                     </TableCell>
@@ -179,6 +181,7 @@ function UserDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { t } = useT();
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [role, setRole] = useState<Role>(user?.role ?? "employee");
@@ -204,7 +207,7 @@ function UserDialog({
       const created = result as Partial<{ temporary_password: string }>;
       if (created.temporary_password) setPassword(created.temporary_password);
       else {
-        toast.success("Perubahan disimpan");
+        toast.success(t("people.saved"));
         onClose();
       }
     },
@@ -217,9 +220,9 @@ function UserDialog({
         {password ? (
           <>
             <DialogHeader>
-              <DialogTitle>Pengguna dibuat</DialogTitle>
+              <DialogTitle>{t("people.created")}</DialogTitle>
               <DialogDescription>
-                Bagikan password sementara ini ke {name} lewat saluran aman. Password tidak akan ditampilkan lagi.
+                {t("people.createdHint", { name })}
               </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
@@ -230,15 +233,15 @@ function UserDialog({
                 className="size-8"
                 onClick={() => {
                   navigator.clipboard.writeText(password);
-                  toast.success("Disalin");
+                  toast.success(t("people.copied"));
                 }}
-                aria-label="Salin password"
+                aria-label={t("people.copy")}
               >
                 <Copy className="size-3.5" />
               </Button>
             </div>
             <DialogFooter>
-              <Button onClick={onClose}>Selesai</Button>
+              <Button onClick={onClose}>{t("people.done")}</Button>
             </DialogFooter>
           </>
         ) : (
@@ -250,23 +253,23 @@ function UserDialog({
             }}
           >
             <DialogHeader>
-              <DialogTitle>{user ? `Ubah ${user.name}` : "Tambah pengguna"}</DialogTitle>
+              <DialogTitle>{user ? t("people.edit", { name: user.name }) : t("people.add")}</DialogTitle>
               {user && <DialogDescription>{user.email}</DialogDescription>}
             </DialogHeader>
             {!user && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nama</Label>
+                  <Label htmlFor="name">{t("people.name")}</Label>
                   <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t("people.email")}</Label>
                   <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
               </>
             )}
             <div className="space-y-2">
-              <Label>Peran</Label>
+              <Label>{t("people.role")}</Label>
               <Select value={role} onValueChange={(v) => setRole(v as Role)}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -274,19 +277,17 @@ function UserDialog({
                 <SelectContent>
                   {ROLES.map((r) => (
                     <SelectItem key={r} value={r}>
-                      {ROLE_LABEL[r]}
+                      {t(`role.${r}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {role === "employee" && "Bertanya dan membaca dokumen sesuai grupnya."}
-                {role === "knowledge_admin" && "Mengunggah dokumen, mengatur akses, melihat feedback dan pertanyaan tak terjawab."}
-                {role === "tenant_admin" && "Semua akses Knowledge Admin, plus mengelola pengguna dan melihat audit log."}
+                {t(`people.role.${role}`)}
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Grup</Label>
+              <Label>{t("people.groups")}</Label>
               <div className="grid grid-cols-2 gap-2 rounded-md border p-3">
                 {groups.map((g) => (
                   <Label key={g.id} className="flex items-center gap-2 font-normal">
@@ -301,10 +302,10 @@ function UserDialog({
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>
-                Batal
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={save.isPending}>
-                {user ? "Simpan" : "Buat pengguna"}
+                {user ? t("common.save") : t("people.create")}
               </Button>
             </DialogFooter>
           </form>
@@ -316,6 +317,7 @@ function UserDialog({
 
 function GroupsTab({ groups, editable }: { groups?: Group[]; editable: boolean }) {
   const queryClient = useQueryClient();
+  const { t } = useT();
   const [name, setName] = useState("");
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["groups"] });
   const create = useMutation({
@@ -342,9 +344,9 @@ function GroupsTab({ groups, editable }: { groups?: Group[]; editable: boolean }
             if (name.trim()) create.mutate();
           }}
         >
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama grup baru, mis. Legal" />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("people.newGroup")} />
           <Button type="submit" variant="outline" disabled={!name.trim() || create.isPending}>
-            <Plus className="size-4" /> Tambah
+            <Plus className="size-4" /> {t("people.addGroup")}
           </Button>
         </form>
       )}
@@ -352,14 +354,14 @@ function GroupsTab({ groups, editable }: { groups?: Group[]; editable: boolean }
         {groups?.map((g) => (
           <li key={g.id} className="flex items-center gap-3 px-4 py-2.5">
             <span className="flex-1 text-sm font-medium">{g.name}</span>
-            <span className="text-sm text-muted-foreground tabular-nums">{g.member_count} anggota</span>
+            <span className="text-sm text-muted-foreground tabular-nums">{t("people.members", { n: g.member_count })}</span>
             {editable && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-8 text-muted-foreground"
                 onClick={() => remove.mutate(g.id)}
-                aria-label={`Hapus grup ${g.name}`}
+                aria-label={t("people.deleteGroup", { name: g.name })}
               >
                 <Trash2 className="size-3.5" />
               </Button>

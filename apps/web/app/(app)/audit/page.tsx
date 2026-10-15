@@ -11,26 +11,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { API_URL, api, type AuditItem } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+import { messages, type MessageKey } from "@/lib/i18n/messages";
 
-const ACTION_LABEL: Record<string, string> = {
-  "auth.login": "Login",
-  "query.asked": "Bertanya",
-  "document.uploaded": "Unggah dokumen",
-  "document.version_uploaded": "Unggah versi baru",
-  "document.deleted": "Hapus dokumen",
-  "document.reprocessed": "Proses ulang dokumen",
-  "collection.created": "Buat collection",
-  "acl.changed": "Ubah akses",
-  "user.created": "Tambah pengguna",
-  "user.role_changed": "Ubah peran",
-  "user.groups_changed": "Ubah grup pengguna",
-  "group.created": "Buat grup",
-  "group.deleted": "Hapus grup",
-  "gap.resolved": "Tutup pertanyaan tak terjawab",
-  "access.checked": "Cek akses",
-};
-
-const label = (action: string) => ACTION_LABEL[action] ?? action;
+/** Known actions are translated; new ones still show their raw code instead of nothing. */
+function actionLabel(action: string, t: ReturnType<typeof useT>["t"]) {
+  const key = `audit.action.${action}`;
+  return key in messages.en ? t(key as MessageKey) : action;
+}
 
 function filters(action: string, q: string) {
   const p = new URLSearchParams();
@@ -41,6 +29,8 @@ function filters(action: string, q: string) {
 
 export default function AuditPage() {
   const [action, setAction] = useState("all");
+  const { t } = useT();
+  const label = (a: string) => actionLabel(a, t);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const { data: actions } = useQuery({ queryKey: ["audit-actions"], queryFn: () => api<string[]>("/audit-logs/actions") });
@@ -59,12 +49,12 @@ export default function AuditPage() {
   return (
     <>
       <PageHeader
-        title="Audit log"
-        description="Catatan permanen siapa melakukan apa. Tidak dapat diubah atau dihapus, termasuk oleh admin."
+        title={t("audit.title")}
+        description={t("audit.subtitle")}
         actions={
           <Button variant="outline" asChild>
             <a href={`${API_URL}/audit-logs/export.csv?${filters(action, q)}`}>
-              <Download className="size-4" /> Ekspor CSV
+              <Download className="size-4" /> {t("audit.export")}
             </a>
           </Button>
         }
@@ -75,7 +65,7 @@ export default function AuditPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Semua aksi</SelectItem>
+            <SelectItem value="all">{t("audit.allActions")}</SelectItem>
             {actions?.map((a) => (
               <SelectItem key={a} value={a}>
                 {label(a)}
@@ -86,7 +76,7 @@ export default function AuditPage() {
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Cari pelaku atau target"
+          placeholder={t("audit.search")}
           className="w-full sm:w-72"
         />
       </div>
@@ -95,10 +85,10 @@ export default function AuditPage() {
         <table className="w-full text-sm">
           <thead className="table-head">
             <tr>
-              <th className="px-4 py-2 font-medium whitespace-nowrap">Waktu</th>
-              <th className="px-4 py-2 font-medium">Pelaku</th>
-              <th className="px-4 py-2 font-medium">Aksi</th>
-              <th className="px-4 py-2 font-medium">Target</th>
+              <th className="px-4 py-2 font-medium whitespace-nowrap">{t("audit.col.time")}</th>
+              <th className="px-4 py-2 font-medium">{t("audit.col.actor")}</th>
+              <th className="px-4 py-2 font-medium">{t("audit.col.action")}</th>
+              <th className="px-4 py-2 font-medium">{t("audit.col.target")}</th>
               <th className="w-8" />
             </tr>
           </thead>
@@ -140,7 +130,7 @@ export default function AuditPage() {
             {!isLoading && items.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
-                  Tidak ada catatan untuk filter ini.
+                  {t("audit.empty")}
                 </td>
               </tr>
             )}
@@ -150,7 +140,7 @@ export default function AuditPage() {
       {hasNextPage && (
         <div className="mt-3 flex justify-center">
           <Button variant="outline" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
-            {isFetchingNextPage ? "Memuat…" : "Muat lebih banyak"}
+            {isFetchingNextPage ? t("audit.loading") : t("audit.more")}
           </Button>
         </div>
       )}
@@ -159,12 +149,13 @@ export default function AuditPage() {
 }
 
 function Detail({ item }: { item: AuditItem }) {
+  const { t } = useT();
   const meta = Object.entries(item.meta ?? {}).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length));
   return (
     <div className="grid gap-4 text-xs md:grid-cols-3">
       {(item.before || item.after) && (
         <div className="md:col-span-2">
-          <p className="mb-1 font-medium text-muted-foreground">Perubahan</p>
+          <p className="mb-1 font-medium text-muted-foreground">{t("audit.changes")}</p>
           <div className="grid grid-cols-2 gap-2">
             <pre className="overflow-x-auto rounded border bg-background p-2">{JSON.stringify(item.before, null, 2) ?? "—"}</pre>
             <pre className="overflow-x-auto rounded border bg-background p-2">{JSON.stringify(item.after, null, 2) ?? "—"}</pre>
@@ -187,7 +178,7 @@ function Detail({ item }: { item: AuditItem }) {
           <dd>{item.ip ?? "—"}</dd>
         </div>
         <div className="grid grid-cols-[4rem_minmax(0,1fr)] gap-2">
-          <dt className="text-muted-foreground">Target</dt>
+          <dt className="text-muted-foreground">{t("audit.target")}</dt>
           <dd className="break-all">
             {item.target_type} {item.target_id}
           </dd>

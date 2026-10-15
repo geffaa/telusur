@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { api, ROLE_LABEL, type AccessCheckResult, type UserItem } from "@/lib/api";
+import { api, type AccessCheckResult, type UserItem } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export default function AccessCheckPage() {
   const { data: users } = useQuery({ queryKey: ["users"], queryFn: () => api<UserItem[]>("/users") });
   const [userId, setUserId] = useState<string>("");
+  const { t } = useT();
   const [question, setQuestion] = useState("");
   const check = useMutation({
     mutationFn: () =>
@@ -31,42 +33,42 @@ export default function AccessCheckPage() {
   return (
     <>
       <PageHeader
-        title="Cek akses"
-        description="Lihat dokumen apa yang bisa dibaca seseorang, dan sumber apa yang akan dipakai untuk menjawab pertanyaannya. Tidak memanggil AI dan tidak mengubah apa pun."
+        title={t("check.title")}
+        description={t("check.subtitle")}
       />
       <form
-        className="mb-6 grid gap-3 surface p-4 md:grid-cols-[16rem_minmax(0,1fr)_auto] md:items-end"
+        className="mb-6 grid gap-3 surface p-4 md:grid-cols-[16rem_minmax(0,1fr)_auto] md:items-start"
         onSubmit={(e) => {
           e.preventDefault();
           if (userId) check.mutate();
         }}
       >
         <div className="space-y-2">
-          <Label>Sebagai pengguna</Label>
+          <Label>{t("check.asUser")}</Label>
           <Select value={userId} onValueChange={setUserId}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Pilih pengguna" />
+              <SelectValue placeholder={t("check.pickUser")} />
             </SelectTrigger>
             <SelectContent>
               {users?.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
-                  {u.name} · {ROLE_LABEL[u.role]}
+                  {u.name} · {t(`role.${u.role}`)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="q">Pertanyaan (opsional)</Label>
+          <Label htmlFor="q">{t("check.question")}</Label>
           <Input
             id="q"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="mis. Berapa gaji pokok direktur utama?"
+            placeholder={t("check.questionPlaceholder")}
           />
         </div>
-        <Button type="submit" disabled={!userId || check.isPending}>
-          <Search className="size-4" /> {check.isPending ? "Memeriksa…" : "Periksa"}
+        <Button type="submit" className="md:mt-[22px]" disabled={!userId || check.isPending}>
+          <Search className="size-4" /> {check.isPending ? t("check.running") : t("check.run")}
         </Button>
       </form>
 
@@ -74,10 +76,10 @@ export default function AccessCheckPage() {
         <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <section>
             <h2 className="text-sm font-medium">
-              {result.user.name} bisa membaca {readable.length} dari {result.documents.length} dokumen
+              {t("check.canRead", { name: result.user.name, n: readable.length, total: result.documents.length })}
             </h2>
             <p className="mb-3 text-xs text-muted-foreground">
-              Grup: {result.groups.length ? result.groups.join(", ") : "tidak ada"}
+              {t("check.groups", { list: result.groups.length ? result.groups.join(", ") : t("common.none") })}
             </p>
             <ul className="divide-y surface text-sm">
               {[...readable, ...hidden].map((d) => (
@@ -95,11 +97,11 @@ export default function AccessCheckPage() {
           </section>
           {result.retrieval && (
             <section>
-              <h2 className="text-sm font-medium">Hasil pencarian untuk pertanyaan ini</h2>
+              <h2 className="text-sm font-medium">{t("check.results")}</h2>
               <p className="mb-3 text-xs text-muted-foreground">
                 {result.retrieval.would_refuse
-                  ? `Asisten akan menjawab "tidak menemukan" (relevansi tertinggi ${result.retrieval.top_score}, di bawah ambang).`
-                  : `Asisten akan menjawab memakai sumber teratas (relevansi tertinggi ${result.retrieval.top_score}).`}
+                  ? t("check.wouldRefuse", { score: result.retrieval.top_score })
+                  : t("check.wouldAnswer", { score: result.retrieval.top_score })}
               </p>
               <ol className="divide-y surface">
                 {result.retrieval.passages.map((p, i) => (
@@ -108,7 +110,7 @@ export default function AccessCheckPage() {
                     <span className="min-w-0">
                       <span className="block font-medium">{p.title}</span>
                       <span className="block text-xs text-muted-foreground">
-                        {p.heading_path} · hal. {p.page}
+                        {p.heading_path} · {t("common.page", { n: p.page })}
                       </span>
                       <span className="mt-1 line-clamp-2 block text-muted-foreground">{p.preview}</span>
                     </span>

@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useMe } from "@/hooks/use-me";
 import { api, canManage, IN_PROGRESS, type Collection, type DocumentItem } from "@/lib/api";
 import { formatBytes, timeAgo } from "@/lib/format";
+import { docErrorText, useT } from "@/lib/i18n";
 
 const ACCEPT = ".pdf,.docx,.md,.markdown,.txt";
 type Filter = "all" | "ready" | "processing" | "failed";
@@ -31,6 +32,7 @@ export default function CollectionPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: me } = useMe();
+  const { t } = useT();
   const queryClient = useQueryClient();
   const admin = canManage(me?.role);
 
@@ -82,7 +84,7 @@ export default function CollectionPage() {
         }
       }),
     );
-    if (ok) toast.success(`${ok} dokumen diunggah dan sedang diproses`);
+    if (ok) toast.success(t("collection.uploaded", { n: ok }));
     setFilter("all");
     ["collections", "collections-health", "overview"].forEach((k) =>
       queryClient.invalidateQueries({ queryKey: [k] }),
@@ -98,7 +100,7 @@ export default function CollectionPage() {
   return (
     <>
       <PageHeader
-        crumbs={[{ href: "/collections", label: "Collections" }]}
+        crumbs={[{ href: "/collections", label: t("nav.collections") }]}
         title={collection?.name ?? <Skeleton className="h-7 w-48" />}
         description={collection?.description}
         actions={
@@ -107,7 +109,7 @@ export default function CollectionPage() {
               <AccessDialog path={`/collections/${id}/access`} kind="collection" name={collection?.name ?? ""} />
               <Button onClick={() => input.current?.click()} disabled={uploading > 0}>
                 <Upload className="size-4" />
-                {uploading > 0 ? `Mengunggah ${uploading}…` : "Upload"}
+                {uploading > 0 ? t("collection.uploading", { n: uploading }) : t("collection.upload")}
               </Button>
               <input
                 ref={input}
@@ -131,32 +133,32 @@ export default function CollectionPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari judul atau nama file"
+            placeholder={t("collection.search")}
             className="pl-8"
           />
         </div>
         <div className="segmented" role="tablist">
           {(
             [
-              ["all", "Semua"],
-              ["ready", "Siap"],
-              ["processing", "Diproses"],
-              ["failed", "Gagal"],
+              "all",
+              "ready",
+              "processing",
+              "failed",
             ] as const
-          ).map(([key, label]) => (
+          ).map((key) => (
             <button
               key={key}
               role="tab"
               aria-selected={filter === key}
               onClick={() => setFilter(key)}
             >
-              {label} <span className="tabular-nums opacity-60">{counts[key]}</span>
+              {t(`collection.filter.${key}`)} <span className="tabular-nums opacity-60">{counts[key]}</span>
             </button>
           ))}
         </div>
         {admin && (
           <p className="ml-auto hidden text-xs text-muted-foreground lg:block">
-            Tarik file ke halaman ini untuk upload · PDF, DOCX, MD, TXT · maks. 50 MB
+            {t("collection.dropHint")}
           </p>
         )}
       </div>
@@ -165,13 +167,13 @@ export default function CollectionPage() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[40%]">Dokumen</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Versi</TableHead>
-              <TableHead className="text-right">Halaman</TableHead>
-              <TableHead className="text-right">Potongan</TableHead>
-              <TableHead className="text-right">Ukuran</TableHead>
-              <TableHead className="text-right">Diperbarui</TableHead>
+              <TableHead className="w-[40%]">{t("collection.col.document")}</TableHead>
+              <TableHead>{t("collection.col.status")}</TableHead>
+              <TableHead className="text-right">{t("collection.col.version")}</TableHead>
+              <TableHead className="text-right">{t("collection.col.pages")}</TableHead>
+              <TableHead className="text-right">{t("collection.col.chunks")}</TableHead>
+              <TableHead className="text-right">{t("collection.col.size")}</TableHead>
+              <TableHead className="text-right">{t("collection.col.updated")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -201,8 +203,8 @@ export default function CollectionPage() {
                     {v && <StatusBadge status={v.status} />}
                     {v?.status === "failed" && (
                       <div className="mt-1 flex items-center gap-2">
-                        <p className="max-w-56 truncate text-xs text-danger" title={v.error ?? ""}>
-                          {v.error}
+                        <p className="max-w-56 truncate text-xs text-danger" title={docErrorText(v.error, t)}>
+                          {docErrorText(v.error, t)}
                         </p>
                         {admin && (
                           <button
@@ -212,7 +214,7 @@ export default function CollectionPage() {
                               retry.mutate(d.id);
                             }}
                           >
-                            <RotateCw className="size-3" /> Coba lagi
+                            <RotateCw className="size-3" /> {t("common.retry")}
                           </button>
                         )}
                       </div>
@@ -235,15 +237,15 @@ export default function CollectionPage() {
                 <TableCell colSpan={7} className="py-14 text-center text-muted-foreground">
                   {docs.length === 0 ? (
                     <>
-                      <p>Collection ini belum berisi dokumen.</p>
+                      <p>{t("collection.empty")}</p>
                       {admin && (
                         <Button size="sm" className="mt-3" onClick={() => input.current?.click()}>
-                          <Upload className="size-4" /> Upload dokumen
+                          <Upload className="size-4" /> {t("collection.uploadDocument")}
                         </Button>
                       )}
                     </>
                   ) : (
-                    "Tidak ada dokumen yang cocok dengan filter."
+                    t("collection.noMatch")
                   )}
                 </TableCell>
               </TableRow>
@@ -256,7 +258,7 @@ export default function CollectionPage() {
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="rounded-xl border-2 border-dashed border-foreground/30 px-10 py-8 text-center">
             <Upload className="mx-auto mb-2 size-6" />
-            <p className="font-medium">Lepas untuk upload ke {collection?.name}</p>
+            <p className="font-medium">{t("collection.dropTo", { name: collection?.name ?? "" })}</p>
             <p className="text-sm text-muted-foreground">PDF, DOCX, Markdown, TXT</p>
           </div>
         </div>

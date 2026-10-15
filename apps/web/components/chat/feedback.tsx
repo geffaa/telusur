@@ -5,8 +5,9 @@ import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { api, REASON_LABEL, type FeedbackReason } from "@/lib/api";
+import { api, type FeedbackReason } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export function FeedbackButtons({
   messageId,
@@ -18,6 +19,7 @@ export function FeedbackButtons({
   rating?: 1 | -1;
 }) {
   const queryClient = useQueryClient();
+  const { t } = useT();
   const [asking, setAsking] = useState(false);
   const [reason, setReason] = useState<FeedbackReason | null>(null);
   const [comment, setComment] = useState("");
@@ -32,7 +34,7 @@ export function FeedbackButtons({
         ...old,
         [messageId]: value,
       }));
-      if (value === -1) toast.success("Terima kasih, masukan diteruskan ke admin pengetahuan.");
+      if (value === -1) toast.success(t("feedback.thanks"));
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -47,7 +49,7 @@ export function FeedbackButtons({
             send(1);
           }}
           className={cn("rounded p-1.5 hover:bg-muted hover:text-foreground", rating === 1 && "text-foreground")}
-          aria-label="Jawaban membantu"
+          aria-label={t("feedback.helpful")}
           aria-pressed={rating === 1}
         >
           <ThumbsUp className={cn("size-3.5", rating === 1 && "fill-current")} />
@@ -55,7 +57,7 @@ export function FeedbackButtons({
         <button
           onClick={() => setAsking((a) => !a)}
           className={cn("rounded p-1.5 hover:bg-muted hover:text-foreground", rating === -1 && "text-foreground")}
-          aria-label="Jawaban tidak membantu"
+          aria-label={t("feedback.notHelpful")}
           aria-pressed={rating === -1}
         >
           <ThumbsDown className={cn("size-3.5", rating === -1 && "fill-current")} />
@@ -70,9 +72,9 @@ export function FeedbackButtons({
             setAsking(false);
           }}
         >
-          <p className="text-sm">Apa yang kurang?</p>
+          <p className="text-sm">{t("feedback.whatWrong")}</p>
           <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(REASON_LABEL) as FeedbackReason[]).map((r) => (
+            {(["wrong", "incomplete", "wrong_source", "other"] as FeedbackReason[]).map((r) => (
               <button
                 key={r}
                 type="button"
@@ -82,7 +84,7 @@ export function FeedbackButtons({
                   reason === r ? "border-brand bg-brand text-primary-foreground" : "hover:bg-muted",
                 )}
               >
-                {REASON_LABEL[r]}
+                {t(`feedback.reason.${r}`)}
               </button>
             ))}
           </div>
@@ -91,15 +93,15 @@ export function FeedbackButtons({
             onChange={(e) => setComment(e.target.value)}
             maxLength={1000}
             rows={2}
-            placeholder="Jawaban yang benar seharusnya… (opsional)"
+            placeholder={t("feedback.commentPlaceholder")}
             className="w-full resize-none rounded-md border bg-transparent px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring/40"
           />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setAsking(false)}>
-              Batal
+              {t("common.cancel")}
             </Button>
-            <Button type="submit" size="sm" aria-label="Kirim feedback">
-              Kirim
+            <Button type="submit" size="sm" aria-label={t("feedback.submit")}>
+              {t("common.send")}
             </Button>
           </div>
         </form>

@@ -8,7 +8,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "Telusur",
-  description: "Asisten pengetahuan internal dengan sitasi dan kontrol akses",
+  description: "Internal knowledge assistant with cited answers and per-document access control",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

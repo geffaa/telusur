@@ -1,13 +1,8 @@
+"use client";
+
 import type { VersionStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
-
-const LABELS: Record<VersionStatus, string> = {
-  queued: "Antre",
-  parsing: "Membaca",
-  embedding: "Indexing",
-  ready: "Siap",
-  failed: "Gagal",
-};
+import { useT } from "@/lib/i18n";
 
 const STYLES: Record<VersionStatus, string> = {
   queued: "bg-muted text-muted-foreground",
@@ -18,6 +13,7 @@ const STYLES: Record<VersionStatus, string> = {
 };
 
 export function StatusBadge({ status, className }: { status: VersionStatus; className?: string }) {
+  const { t } = useT();
   const busy = status === "parsing" || status === "embedding" || status === "queued";
   return (
     <span
@@ -28,7 +24,7 @@ export function StatusBadge({ status, className }: { status: VersionStatus; clas
       )}
     >
       <span className={cn("size-1.5 rounded-full bg-current", busy && "animate-pulse")} aria-hidden />
-      {LABELS[status]}
+      {t(`status.${status}`)}
     </span>
   );
 }

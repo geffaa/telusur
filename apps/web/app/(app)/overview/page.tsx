@@ -24,9 +24,11 @@ import { useMe } from "@/hooks/use-me";
 import { api, canManage, type Overview, type RecentDocument } from "@/lib/api";
 import { formatNumber, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { docErrorText, useT } from "@/lib/i18n";
 
 export default function OverviewPage() {
   const { data: me } = useMe();
+  const { t } = useT();
   const { data, isLoading } = useQuery({
     queryKey: ["overview"],
     queryFn: () => api<Overview>("/overview"),
@@ -41,13 +43,13 @@ export default function OverviewPage() {
   return (
     <>
       <PageHeader
-        title="Ringkasan"
-        description="Kondisi basis pengetahuan workspace ini."
+        title={t("overview.title")}
+        description={t("overview.subtitle")}
         actions={
           admin && (
             <Button asChild variant="outline">
               <Link href="/collections">
-                <Upload className="size-4" /> Upload dokumen
+                <Upload className="size-4" /> {t("overview.upload")}
               </Link>
             </Button>
           )
@@ -58,57 +60,57 @@ export default function OverviewPage() {
         <Metric
           icon={FileCheck2}
           tone="success"
-          label="Dokumen siap dijawab"
+          label={t("overview.ready")}
           value={data?.documents.ready}
-          hint={data && `dari ${total} dokumen · ${formatNumber(data.chunks)} potongan`}
+          hint={data && t("overview.readyHint", { total, chunks: formatNumber(data.chunks) })}
         />
         <Metric
           icon={Loader}
           tone="info"
-          label="Sedang diproses"
+          label={t("overview.processing")}
           value={data?.documents.processing}
-          hint={data?.documents.processing ? "diperbarui otomatis" : "antrean kosong"}
+          hint={data?.documents.processing ? t("overview.processingHint") : t("overview.queueEmpty")}
         />
         <Metric
           icon={FileWarning}
           tone={data?.documents.failed ? "danger" : "neutral"}
-          label="Gagal diproses"
+          label={t("overview.failed")}
           value={data?.documents.failed}
-          hint={data?.documents.failed ? "perlu dicek di bawah" : "tidak ada masalah"}
+          hint={data?.documents.failed ? t("overview.failedHint") : t("overview.noProblems")}
         />
         <Metric
           icon={FolderOpen}
           tone="brand"
-          label="Collection"
+          label={t("overview.collections")}
           value={data?.collections}
           href="/collections"
-          hint="kelola dokumen dan akses →"
+          hint={t("overview.collectionsHint")}
         />
       </section>
 
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">Pemakaian 7 hari terakhir</h2>
+        <h2 className="text-sm font-semibold">{t("overview.usage")}</h2>
       </div>
       <section className="mb-9 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Metric
           icon={MessagesSquare}
           tone="brand"
-          label="Pertanyaan dijawab"
+          label={t("overview.answered")}
           value={data && data.questions_7d - data.refused_7d}
-          hint={data && `${data.questions_7d} pertanyaan masuk`}
+          hint={data && t("overview.answeredHint", { n: data.questions_7d })}
         />
         <Metric
           icon={HelpCircle}
           tone={data?.open_gaps ? "warning" : "neutral"}
-          label="Tidak terjawab"
+          label={t("overview.unanswered")}
           value={data?.refused_7d}
-          hint={data && `${data.open_gaps} topik menunggu tindak lanjut →`}
+          hint={data && t("overview.unansweredHint", { n: data.open_gaps })}
           href="/gaps"
         />
         <Metric
           icon={ThumbsUp}
           tone="success"
-          label="Dinilai membantu"
+          label={t("overview.helpful")}
           value={
             data &&
             (data.feedback_positive + data.feedback_negative
@@ -118,18 +120,18 @@ export default function OverviewPage() {
               : 0)
           }
           suffix="%"
-          hint={data && `${data.feedback_positive + data.feedback_negative} penilaian →`}
+          hint={data && t("overview.helpfulHint", { n: data.feedback_positive + data.feedback_negative })}
           href="/feedback"
         />
       </section>
 
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <section>
-          <h2 className="mb-3 text-sm font-semibold">Aktivitas terbaru</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("overview.recent")}</h2>
           <div className="surface">
             {isLoading && <Rows />}
             {data?.recent.length === 0 && (
-              <Empty admin={admin} text="Belum ada dokumen di workspace ini." />
+              <Empty admin={admin} text={t("overview.empty")} />
             )}
             <ul className="divide-y">
               {data?.recent.map((d) => (
@@ -139,12 +141,12 @@ export default function OverviewPage() {
           </div>
         </section>
         <section>
-          <h2 className="mb-3 text-sm font-semibold">Perlu perhatian</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("overview.attention")}</h2>
           <div className="surface">
             {isLoading && <Rows />}
             {data && data.attention.length === 0 && (
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                Semua dokumen sudah diproses.
+                {t("overview.allProcessed")}
               </p>
             )}
             <ul className="divide-y">
@@ -185,10 +187,11 @@ function DocRow({ doc }: { doc: RecentDocument }) {
 
 function AttentionRow({ doc, admin }: { doc: RecentDocument; admin: boolean }) {
   const queryClient = useQueryClient();
+  const { t } = useT();
   const retry = useMutation({
     mutationFn: () => api(`/documents/${doc.id}/retry`, { method: "POST" }),
     onSuccess: () => {
-      toast.success(`${doc.title} diantrekan ulang`);
+      toast.success(t("overview.requeued", { title: doc.title }));
       queryClient.invalidateQueries({ queryKey: ["overview"] });
     },
     onError: (e) => toast.error(e.message),
@@ -214,7 +217,7 @@ function AttentionRow({ doc, admin }: { doc: RecentDocument; admin: boolean }) {
           )}
         >
           {doc.status === "failed" ? (
-            doc.error
+            docErrorText(doc.error, t)
           ) : (
             <StatusBadge status={doc.status} />
           )}
@@ -227,7 +230,7 @@ function AttentionRow({ doc, admin }: { doc: RecentDocument; admin: boolean }) {
           onClick={() => retry.mutate()}
           disabled={retry.isPending}
         >
-          <RotateCw className="size-3.5" /> Coba lagi
+          <RotateCw className="size-3.5" /> {t("common.retry")}
         </Button>
       )}
     </li>
@@ -245,12 +248,13 @@ function Rows() {
 }
 
 function Empty({ admin, text }: { admin: boolean; text: string }) {
+  const { t } = useT();
   return (
     <div className="px-4 py-10 text-center text-sm text-muted-foreground">
       <p>{text}</p>
       {admin && (
         <Button asChild size="sm" className="mt-3">
-          <Link href="/collections">Upload dokumen pertama</Link>
+          <Link href="/collections">{t("overview.uploadFirst")}</Link>
         </Button>
       )}
     </div>

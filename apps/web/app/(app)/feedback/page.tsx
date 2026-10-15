@@ -8,13 +8,15 @@ import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, REASON_LABEL, type FeedbackItem } from "@/lib/api";
+import { api, type FeedbackItem } from "@/lib/api";
 import { formatDate, timeAgo } from "@/lib/format";
+import { useT } from "@/lib/i18n";
 
 type Filter = "all" | "1" | "-1";
 
 export default function FeedbackPage() {
   const [filter, setFilter] = useState<Filter>("-1");
+  const { t } = useT();
   const { data, isLoading } = useQuery({
     queryKey: ["feedback", filter],
     queryFn: () =>
@@ -28,16 +30,16 @@ export default function FeedbackPage() {
   return (
     <>
       <PageHeader
-        title="Feedback jawaban"
-        description="Penilaian karyawan atas jawaban asisten. Mulai dari yang tidak membantu: biasanya tanda dokumen kurang jelas atau usang."
+        title={t("feedbackPage.title")}
+        description={t("feedbackPage.subtitle")}
       />
       <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="segmented" role="tablist">
           {(
             [
-              ["-1", "Tidak membantu", data?.negative],
-              ["1", "Membantu", data?.positive],
-              ["all", "Semua", total],
+              ["-1", t("feedbackPage.notHelpful"), data?.negative],
+              ["1", t("feedbackPage.helpful"), data?.positive],
+              ["all", t("feedbackPage.all"), total],
             ] as const
           ).map(([key, label, n]) => (
             <button
@@ -52,10 +54,7 @@ export default function FeedbackPage() {
         </div>
         {rate !== null && (
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground tabular-nums">
-              {rate}%
-            </span>{" "}
-            jawaban dinilai membantu dari {total} penilaian
+            {t("feedbackPage.rate", { rate, n: total })}
           </p>
         )}
       </div>
@@ -63,7 +62,7 @@ export default function FeedbackPage() {
       {isLoading && <Skeleton className="h-48 rounded-lg" />}
       {data?.items.length === 0 && (
         <p className="surface px-6 py-12 text-center text-sm text-muted-foreground">
-          Belum ada feedback di kategori ini.
+          {t("feedbackPage.empty")}
         </p>
       )}
       <ul className="divide-y surface empty:hidden">
@@ -80,13 +79,13 @@ export default function FeedbackPage() {
                   <ThumbsDown className="size-3.5 text-danger" />
                 )}
                 {f.rating === 1
-                  ? "Membantu"
+                  ? t("feedbackPage.helpful")
                   : f.reason
-                    ? REASON_LABEL[f.reason]
-                    : "Tidak membantu"}
+                    ? t(`feedback.reason.${f.reason}`)
+                    : t("feedbackPage.notHelpful")}
               </p>
               <p className="text-xs text-muted-foreground">
-                {f.user_name ?? "Pengguna dihapus"} ·{" "}
+                {f.user_name ?? t("feedbackPage.deletedUser")} ·{" "}
                 <span title={formatDate(f.created_at)}>
                   {timeAgo(f.created_at)}
                 </span>
@@ -99,7 +98,7 @@ export default function FeedbackPage() {
               {f.comment && (
                 <p className="border-l-2 border-brand/40 pl-3">
                   <span className="text-xs text-muted-foreground">
-                    Komentar:{" "}
+                    {t("feedbackPage.comment")}{" "}
                   </span>
                   {f.comment}
                 </p>
@@ -114,12 +113,13 @@ export default function FeedbackPage() {
 
 function ToCase({ feedbackId }: { feedbackId: string }) {
   const router = useRouter();
+  const { t } = useT();
   const create = useMutation({
     mutationFn: () =>
       api(`/eval/cases/from-feedback/${feedbackId}`, { method: "POST" }),
     onSuccess: () => {
-      toast.success("Kasus uji dibuat", {
-        description: "Pilih dokumen sumbernya lalu verifikasi.",
+      toast.success(t("feedbackPage.caseCreated"), {
+        description: t("feedbackPage.caseCreatedHint"),
       });
       router.push("/evaluation?tab=cases");
     },
@@ -133,7 +133,7 @@ function ToCase({ feedbackId }: { feedbackId: string }) {
       onClick={() => create.mutate()}
       disabled={create.isPending}
     >
-      <FlaskConical className="size-3.5" /> Jadikan kasus uji
+      <FlaskConical className="size-3.5" /> {t("feedbackPage.toCase")}
     </Button>
   );
 }

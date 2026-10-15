@@ -150,7 +150,8 @@
   .segmented > button {
     @apply rounded-md px-2.5 py-1 text-muted-foreground transition-colors hover:text-foreground;
   }
-  .segmented > button[aria-selected="true"] {
+  .segmented > button[aria-selected="true"],
+  .segmented > button[aria-checked="true"] {
     @apply bg-brand-soft font-medium text-brand-strong;
   }
 }

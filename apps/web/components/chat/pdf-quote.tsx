@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 /** Words shared with the quote, ignoring case, punctuation and table pipes. */
 function normalize(text: string) {
@@ -66,14 +67,15 @@ export function PdfQuote({ url, page, quote }: { url: string; page: number; quot
   const canvas = useRef<HTMLCanvasElement>(null);
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const { t } = useT();
 
   useEffect(() => {
     let cancelled = false;
     let task: { cancel: () => void } | null = null;
     setBoxes([]);
     setSize(null);
-    setError(null);
+    setError(false);
 
     (async () => {
       const pdfjs = await import("pdfjs-dist");
@@ -126,7 +128,7 @@ export function PdfQuote({ url, page, quote }: { url: string; page: number; quot
         });
       }
     })().catch((e) => {
-      if (!cancelled && e?.name !== "RenderingCancelledException") setError("PDF tidak bisa ditampilkan");
+      if (!cancelled && e?.name !== "RenderingCancelledException") setError(true);
     });
 
     return () => {
@@ -138,8 +140,8 @@ export function PdfQuote({ url, page, quote }: { url: string; page: number; quot
   return (
     <div ref={wrap} className="relative w-full bg-muted/40">
       {!size && !error && <Skeleton className="aspect-[1/1.41] w-full rounded-none" />}
-      {error && <p className="px-4 py-6 text-sm text-muted-foreground">{error}</p>}
-      <canvas ref={canvas} className={cn("block", !size && "absolute opacity-0")} aria-label={`Halaman ${page}`} />
+      {error && <p className="px-4 py-6 text-sm text-muted-foreground">{t("source.pdfError")}</p>}
+      <canvas ref={canvas} className={cn("block", !size && "absolute opacity-0")} aria-label={t("source.pageHighlighted", { n: page })} />
       {size &&
         boxes.map((b, i) => (
           <span
@@ -151,8 +153,7 @@ export function PdfQuote({ url, page, quote }: { url: string; page: number; quot
         ))}
       {size && (
         <p className="border-t bg-card px-4 py-2 text-xs text-muted-foreground">
-          Halaman {page}
-          {boxes.length ? " · bagian yang dikutip disorot" : " · kutipan tidak ditemukan persis di teks halaman"}
+          {boxes.length ? t("source.pageHighlighted", { n: page }) : t("source.pageNotFound", { n: page })}
         </p>
       )}
     </div>

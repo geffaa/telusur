@@ -24,10 +24,12 @@ import {
 } from "@/lib/api";
 import { formatBytes, formatDate, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { docErrorText, useT } from "@/lib/i18n";
 
 export default function DocumentPage() {
   const { id } = useParams<{ id: string }>();
   const { data: me } = useMe();
+  const { t } = useT();
   const queryClient = useQueryClient();
   const admin = canManage(me?.role);
   const [selected, setSelected] = useState<number | null>(null);
@@ -74,7 +76,7 @@ export default function DocumentPage() {
     <>
       <PageHeader
         crumbs={[
-          { href: "/collections", label: "Collections" },
+          { href: "/collections", label: t("nav.collections") },
           {
             href: `/collections/${doc.collection_id}`,
             label: collection?.name ?? "…",
@@ -87,9 +89,9 @@ export default function DocumentPage() {
               <StatusBadge status={shown.status} />
               <span>{shown.filename}</span>
               <span>{formatBytes(shown.size_bytes)}</span>
-              {shown.pages && <span>{shown.pages} halaman</span>}
+              {shown.pages && <span>{t("document.pages", { n: shown.pages })}</span>}
               <span title={formatDate(shown.updated_at)}>
-                diperbarui {timeAgo(shown.updated_at)}
+                {t("document.updated", { when: timeAgo(shown.updated_at) })}
               </span>
             </span>
           )
@@ -110,7 +112,7 @@ export default function DocumentPage() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <ExternalLink className="size-4" /> Buka file
+                  <ExternalLink className="size-4" /> {t("document.openFile")}
                 </a>
               </Button>
             )}
@@ -126,7 +128,7 @@ export default function DocumentPage() {
 
       <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-8">
-          <h2 className="mb-2 text-sm font-medium">Versi</h2>
+          <h2 className="mb-2 text-sm font-medium">{t("document.versions")}</h2>
           <ul className="space-y-1">
             {[...doc.versions].reverse().map((v) => (
               <li key={v.id}>
@@ -144,31 +146,30 @@ export default function DocumentPage() {
                       v{v.version}
                       {v.is_current && (
                         <span className="ml-2 text-xs font-normal text-muted-foreground">
-                          aktif
+                          {t("document.active")}
                         </span>
                       )}
                     </span>
                     <StatusBadge status={v.status} />
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {v.chunk_count} potongan · {timeAgo(v.created_at)}
+                    {t("document.versionMeta", { n: v.chunk_count, when: timeAgo(v.created_at) })}
                   </span>
                 </button>
               </li>
             ))}
           </ul>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-            Hanya versi aktif yang dipakai untuk menjawab pertanyaan.
+            {t("document.onlyActive")}
           </p>
         </aside>
 
         <section className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-medium">Potongan terindeks</h2>
+              <h2 className="text-sm font-medium">{t("document.chunks")}</h2>
               <p className="text-xs text-muted-foreground">
-                Teks yang dicari saat menjawab, beserta section dan halaman
-                untuk sitasi.
+                {t("document.chunksHint")}
               </p>
             </div>
             {chunks && chunks.length > 0 && (
@@ -177,7 +178,7 @@ export default function DocumentPage() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={`Cari di ${chunks.length} potongan`}
+                  placeholder={t("document.searchChunks", { n: chunks.length })}
                   className="pl-8"
                 />
               </div>
@@ -186,12 +187,12 @@ export default function DocumentPage() {
 
           {!admin && (
             <Notice>
-              Hanya Knowledge Admin yang dapat melihat potongan teks.
+              {t("document.adminOnly")}
             </Notice>
           )}
           {admin && shown?.status === "failed" && (
             <Notice tone="bad">
-              <span className="min-w-0 flex-1">{shown.error}</span>
+              <span className="min-w-0 flex-1">{docErrorText(shown.error, t)}</span>
               {shown.id === doc.latest?.id && (
                 <Button
                   size="sm"
@@ -199,19 +200,19 @@ export default function DocumentPage() {
                   onClick={() => retry.mutate()}
                   disabled={retry.isPending}
                 >
-                  <RotateCw className="size-3.5" /> Coba lagi
+                  <RotateCw className="size-3.5" /> {t("common.retry")}
                 </Button>
               )}
             </Notice>
           )}
           {admin && shown && IN_PROGRESS.includes(shown.status) && (
             <Notice>
-              Dokumen sedang diproses. Halaman ini diperbarui otomatis.
+              {t("document.processingNotice")}
             </Notice>
           )}
           {chunksLoading && <Skeleton className="h-40 rounded-lg" />}
           {needle && visible?.length === 0 && (
-            <Notice>Tidak ada potongan yang mengandung “{query}”.</Notice>
+            <Notice>{t("document.noChunkMatch", { q: query })}</Notice>
           )}
 
           <ol className="divide-y surface empty:hidden">
@@ -223,12 +224,13 @@ export default function DocumentPage() {
                 <div className="mb-1 flex gap-3 text-xs text-muted-foreground md:block md:space-y-0.5">
                   <p className="font-mono">#{c.ordinal}</p>
                   <p>
-                    hal. {c.page_start}
-                    {c.page_end !== c.page_start && `–${c.page_end}`}
+                    {c.page_end !== c.page_start
+                      ? t("common.pages", { from: c.page_start, to: c.page_end })
+                      : t("common.page", { n: c.page_start })}
                   </p>
-                  <p>{c.token_count} token</p>
+                  <p>{t("document.tokens", { n: c.token_count })}</p>
                   {c.kind === "table" && (
-                    <p className="font-medium text-foreground">tabel</p>
+                    <p className="font-medium text-foreground">{t("document.table")}</p>
                   )}
                 </div>
                 <div className="min-w-0">

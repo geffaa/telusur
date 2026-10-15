@@ -24,10 +24,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMe } from "@/hooks/use-me";
 import { api, canManage, type Collection, type CollectionHealth } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
+import { useT } from "@/lib/i18n";
 
 export default function CollectionsPage() {
   const router = useRouter();
   const { data: me } = useMe();
+  const { t } = useT();
   const { data, isLoading } = useQuery({
     queryKey: ["collections"],
     queryFn: () => api<Collection[]>("/collections"),
@@ -41,18 +43,18 @@ export default function CollectionsPage() {
   return (
     <>
       <PageHeader
-        title="Collections"
-        description="Dokumen dikelompokkan per collection. Hak akses nantinya diatur di level ini."
+        title={t("collections.title")}
+        description={t("collections.subtitle")}
         actions={canManage(me?.role) && <CreateCollectionDialog />}
       />
       <div className="overflow-x-auto surface">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[45%]">Nama</TableHead>
-              <TableHead className="text-right">Dokumen</TableHead>
-              <TableHead>Kondisi</TableHead>
-              <TableHead className="text-right">Terakhir diperbarui</TableHead>
+              <TableHead className="w-[45%]">{t("collections.name")}</TableHead>
+              <TableHead className="text-right">{t("collections.documents")}</TableHead>
+              <TableHead>{t("collections.health")}</TableHead>
+              <TableHead className="text-right">{t("collections.updated")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -80,7 +82,7 @@ export default function CollectionsPage() {
                     >
                       {c.name}
                     </Link>
-                    <p className="truncate text-xs text-muted-foreground">{c.description || "Tanpa deskripsi"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{c.description || t("collections.noDescription")}</p>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{c.document_count}</TableCell>
                   <TableCell>
@@ -95,7 +97,7 @@ export default function CollectionsPage() {
             {data?.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="py-12 text-center text-muted-foreground">
-                  Belum ada collection.
+                  {t("collections.none")}
                 </TableCell>
               </TableRow>
             )}
@@ -107,17 +109,19 @@ export default function CollectionsPage() {
 }
 
 function Health({ counts }: { counts?: CollectionHealth["counts"] }) {
-  if (!counts) return <span className="text-sm text-muted-foreground">Kosong</span>;
+  const { t } = useT();
+  if (!counts) return <span className="text-sm text-muted-foreground">{t("collections.empty")}</span>;
   const parts = [
-    counts.failed > 0 && <span key="f" className="text-danger">{counts.failed} gagal</span>,
-    counts.processing > 0 && <span key="p">{counts.processing} diproses</span>,
-    counts.ready > 0 && <span key="r" className="text-muted-foreground">{counts.ready} siap</span>,
+    counts.failed > 0 && <span key="f" className="text-danger">{t("collections.failedCount", { n: counts.failed })}</span>,
+    counts.processing > 0 && <span key="p">{t("collections.processingCount", { n: counts.processing })}</span>,
+    counts.ready > 0 && <span key="r" className="text-muted-foreground">{t("collections.readyCount", { n: counts.ready })}</span>,
   ].filter(Boolean);
   return <span className="flex flex-wrap gap-x-3 text-sm whitespace-nowrap">{parts}</span>;
 }
 
 function CreateCollectionDialog() {
   const queryClient = useQueryClient();
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -130,7 +134,7 @@ function CreateCollectionDialog() {
       setOpen(false);
       setName("");
       setDescription("");
-      toast.success("Collection dibuat");
+      toast.success(t("collections.created"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -139,7 +143,7 @@ function CreateCollectionDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="size-4" /> Collection baru
+          <Plus className="size-4" /> {t("collections.new")}
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -151,19 +155,19 @@ function CreateCollectionDialog() {
           className="space-y-4"
         >
           <DialogHeader>
-            <DialogTitle>Collection baru</DialogTitle>
+            <DialogTitle>{t("collections.new")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="name">Nama</Label>
+            <Label htmlFor="name">{t("collections.name")}</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Deskripsi</Label>
+            <Label htmlFor="description">{t("collections.description")}</Label>
             <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={create.isPending}>
-              Simpan
+              {t("common.save")}
             </Button>
           </DialogFooter>
         </form>

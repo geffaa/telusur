@@ -21,12 +21,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api, type DocumentItem } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 const ACCEPT = ".pdf,.docx,.md,.markdown,.txt";
 
 export function DocumentActions({ doc, busy }: { doc: DocumentItem; busy: boolean }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t } = useT();
   const input = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -39,8 +41,8 @@ export function DocumentActions({ doc, busy }: { doc: DocumentItem; busy: boolea
     try {
       const updated = await api<DocumentItem>(`/documents/${doc.id}/versions`, { method: "POST", body: form });
       queryClient.setQueryData(["document", doc.id], updated);
-      toast.success(`Versi ${updated.latest?.version} sedang diproses`, {
-        description: "Versi aktif tetap dipakai sampai versi baru siap.",
+      toast.success(t("document.versionProcessing", { n: updated.latest?.version ?? "" }), {
+        description: t("document.versionProcessingHint"),
       });
     } catch (e) {
       toast.error((e as Error).message);
@@ -56,7 +58,7 @@ export function DocumentActions({ doc, busy }: { doc: DocumentItem; busy: boolea
       ["collections", "collections-health", "overview", "documents"].forEach((k) =>
         queryClient.invalidateQueries({ queryKey: [k] }),
       );
-      toast.success(`"${doc.title}" dihapus`);
+      toast.success(t("document.deleted", { title: doc.title }));
       router.push(`/collections/${doc.collection_id}`);
     } catch (e) {
       toast.error((e as Error).message);
@@ -70,9 +72,9 @@ export function DocumentActions({ doc, busy }: { doc: DocumentItem; busy: boolea
         variant="outline"
         onClick={() => input.current?.click()}
         disabled={uploading || busy}
-        title={busy ? "Tunggu versi yang sedang diproses selesai" : undefined}
+        title={busy ? t("document.waitProcessing") : undefined}
       >
-        <FileUp className="size-4" /> {uploading ? "Mengunggah…" : "Versi baru"}
+        <FileUp className="size-4" /> {uploading ? t("document.uploadingVersion") : t("document.newVersion")}
       </Button>
       <input
         ref={input}
@@ -87,30 +89,30 @@ export function DocumentActions({ doc, busy }: { doc: DocumentItem; busy: boolea
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Aksi lain">
+          <Button variant="ghost" size="icon" aria-label={t("document.moreActions")}>
             <MoreHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem variant="destructive" onSelect={() => setConfirmDelete(true)}>
-            <Trash2 className="size-4" /> Hapus dokumen
+            <Trash2 className="size-4" /> {t("document.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Hapus &ldquo;{doc.title}&rdquo;?</DialogTitle>
+            <DialogTitle>{t("document.deleteTitle", { title: doc.title })}</DialogTitle>
             <DialogDescription>
-              Dokumen langsung berhenti dipakai untuk menjawab. Riwayat dan audit log tetap tersimpan.
+              {t("document.deleteHint")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button variant="destructive" onClick={remove} disabled={deleting}>
-              {deleting ? "Menghapus…" : "Hapus"}
+              {deleting ? t("common.deleting") : t("common.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

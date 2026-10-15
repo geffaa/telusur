@@ -26,25 +26,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api, streamChat, type ChatMessage, type ConversationItem, type Source } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
-const STAGE_LABEL = {
-  rewriting: "Memahami konteks percakapan…",
-  searching: "Mencari di dokumen yang bisa Anda akses…",
-  answering: "Menyusun jawaban…",
-};
-
-const EXAMPLES = [
-  "Berapa uang harian manager untuk dinas ke Surabaya?",
-  "Berapa lama cuti melahirkan dan bagaimana upahnya?",
-  "Siapa yang menyetujui reimbursement di atas Rp 10 juta?",
-  "Can I use my personal laptop for VPN?",
-];
+type Stage = "rewriting" | "searching" | "answering";
 
 interface Pending {
   question: string;
   content: string;
   sources: Source[];
-  stage: keyof typeof STAGE_LABEL | null;
+  stage: Stage | null;
   error: string | null;
 }
 
@@ -58,6 +48,7 @@ export default function ChatPage() {
 
 function Chat() {
   const router = useRouter();
+  const { t } = useT();
   const params = useSearchParams();
   const queryClient = useQueryClient();
   const conversationId = params.get("c");
@@ -123,7 +114,7 @@ function Chat() {
       if ((e as Error).name === "AbortError") {
         setPending(null);
         if (convo) queryClient.invalidateQueries({ queryKey: ["messages", convo] });
-      } else setPending((p) => p && { ...p, stage: null, error: "Koneksi terputus. Coba kirim ulang." });
+      } else setPending((p) => p && { ...p, stage: null, error: t("chat.connectionLost") });
     } finally {
       abort.current = null;
       textarea.current?.focus();
@@ -170,12 +161,12 @@ function Chat() {
               textarea.current?.focus();
             }}
           >
-            <MessageSquarePlus className="size-4" /> Percakapan baru
+            <MessageSquarePlus className="size-4" /> {t("chat.newConversation")}
           </Button>
         </div>
         <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
           {conversations?.length === 0 && (
-            <li className="px-2 py-4 text-xs text-muted-foreground">Belum ada percakapan.</li>
+            <li className="px-2 py-4 text-xs text-muted-foreground">{t("chat.noConversations")}</li>
           )}
           {conversations?.map((c) => (
             <li key={c.id} className="group relative">
@@ -192,7 +183,7 @@ function Chat() {
               <button
                 onClick={() => remove(c.id)}
                 className="absolute top-2 right-1.5 rounded p-1 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-background hover:text-foreground focus:opacity-100"
-                aria-label={`Hapus ${c.title}`}
+                aria-label={t("chat.deleteConversation", { title: c.title })}
               >
                 <Trash2 className="size-3.5" />
               </button>
@@ -206,7 +197,7 @@ function Chat() {
         {conversationId && (
           <div className="flex justify-end border-b px-4 py-2 lg:hidden">
             <Button variant="ghost" size="sm" onClick={() => router.push("/chat")}>
-              <MessageSquarePlus className="size-4" /> Percakapan baru
+              <MessageSquarePlus className="size-4" /> {t("chat.newConversation")}
             </Button>
           </div>
         )}
@@ -245,7 +236,7 @@ function Chat() {
                   <div>
                     {pending.stage && (
                       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="size-3.5 animate-spin" /> {STAGE_LABEL[pending.stage]}
+                        <Loader2 className="size-3.5 animate-spin" /> {t(`chat.stage.${pending.stage}`)}
                       </p>
                     )}
                     {pending.content && (
@@ -261,7 +252,7 @@ function Chat() {
                       <div className="flex items-center gap-3 rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
                         <span className="flex-1">{pending.error}</span>
                         <Button size="sm" variant="outline" onClick={() => send(pending.question)}>
-                          Coba lagi
+                          {t("common.retry")}
                         </Button>
                       </div>
                     )}
@@ -297,22 +288,22 @@ function Chat() {
               }}
               rows={1}
               maxLength={2000}
-              placeholder="Tanyakan kebijakan, SOP, atau prosedur…"
+              placeholder={t("chat.placeholder")}
               className="max-h-[200px] min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] outline-none placeholder:text-muted-foreground"
               autoFocus
             />
             {busy ? (
-              <Button type="button" size="icon" variant="outline" onClick={() => abort.current?.abort()} aria-label="Hentikan">
+              <Button type="button" size="icon" variant="outline" onClick={() => abort.current?.abort()} aria-label={t("chat.stop")}>
                 <Square className="size-3.5 fill-current" />
               </Button>
             ) : (
-              <Button type="submit" size="icon" disabled={!input.trim()} aria-label="Kirim pertanyaan">
+              <Button type="submit" size="icon" disabled={!input.trim()} aria-label={t("chat.sendQuestion")}>
                 <ArrowUp className="size-4" />
               </Button>
             )}
           </div>
           <p className="mt-1.5 px-1 text-xs text-muted-foreground">
-            Jawaban hanya dari dokumen yang bisa Anda akses. Periksa sumbernya untuk keputusan penting.
+            {t("chat.disclaimer")}
           </p>
         </form>
       </section>
@@ -358,6 +349,7 @@ function AssistantBlock({
   // If the model forgot citation markers, still show what the answer was based on.
   const marked = sources.filter((s) => s.cited !== false);
   const cited = marked.length || refused ? marked : sources;
+  const { t } = useT();
   return (
     <div>
       {refused ? (
@@ -383,8 +375,8 @@ function AssistantBlock({
                   {s.marker}
                 </span>
                 <FileText className="size-3 shrink-0 text-muted-foreground" />
-                <span className="truncate">{s.available === false ? "Akses dicabut" : s.title}</span>
-                <span className="shrink-0 text-muted-foreground">hal. {s.page_start}</span>
+                <span className="truncate">{s.available === false ? t("chat.accessRevoked") : s.title}</span>
+                <span className="shrink-0 text-muted-foreground">{t("common.page", { n: s.page_start })}</span>
               </button>
             </li>
           ))}
@@ -398,15 +390,17 @@ function AssistantBlock({
 const EXAMPLE_ICONS = [Plane, Baby, Receipt, Laptop];
 
 function EmptyState({ onPick }: { onPick: (q: string) => void }) {
+  const { t } = useT();
+  const examples = [t("chat.example1"), t("chat.example2"), t("chat.example3"), t("chat.example4")];
   return (
     <div className="pt-[10vh]">
       <BrandMark className="size-11 rounded-xl" />
-      <h1 className="mt-5 text-2xl font-semibold tracking-tight">Tanyakan kebijakan perusahaan</h1>
+      <h1 className="mt-5 text-2xl font-semibold tracking-tight">{t("chat.empty.title")}</h1>
       <p className="mt-1.5 max-w-lg text-[15px] text-muted-foreground">
-        Telusur menjawab dari dokumen internal yang boleh Anda baca, dan menunjukkan halaman sumbernya.
+        {t("chat.empty.subtitle")}
       </p>
       <ul className="mt-7 grid gap-2.5 sm:grid-cols-2">
-        {EXAMPLES.map((q, i) => {
+        {examples.map((q, i) => {
           const Icon = EXAMPLE_ICONS[i % EXAMPLE_ICONS.length];
           return (
             <li key={q}>

@@ -1,3 +1,5 @@
+import { currentLocale, translate } from "@/lib/i18n";
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
@@ -11,6 +13,7 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
+  headers.set("Accept-Language", currentLocale());
   if (init.body && !(init.body instanceof FormData)) headers.set("content-type", "application/json");
   const res = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: "include" });
   if (!res.ok) {
@@ -186,7 +189,7 @@ export async function* streamChat(
   const res = await fetch(`${API_URL}/chat`, {
     method: "POST",
     credentials: "include",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "Accept-Language": currentLocale() },
     body: JSON.stringify({ message, conversation_id: conversationId }),
     signal,
   });
@@ -194,7 +197,7 @@ export async function* streamChat(
     window.location.href = "/login";
     return;
   }
-  if (!res.ok || !res.body) throw new ApiError(res.status, "Gagal mengirim pertanyaan");
+  if (!res.ok || !res.body) throw new ApiError(res.status, translate(currentLocale(), "chat.sendFailed"));
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = "";
   while (true) {
@@ -271,18 +274,7 @@ export interface AccessCheckResult {
   } | null;
 }
 
-export const ROLE_LABEL: Record<Role, string> = {
-  employee: "Karyawan",
-  knowledge_admin: "Knowledge Admin",
-  tenant_admin: "Tenant Admin",
-};
 
-export const REASON_LABEL: Record<FeedbackReason, string> = {
-  wrong: "Jawaban salah",
-  incomplete: "Kurang lengkap",
-  wrong_source: "Sumber tidak tepat",
-  other: "Lainnya",
-};
 
 export type EvalKind = "answerable" | "unanswerable" | "restricted";
 export type RetrievalMode = "vector" | "lexical" | "hybrid" | "hybrid_rerank";
@@ -360,9 +352,3 @@ export interface EvalResultItem {
   judge_notes: string | null;
 }
 
-export const MODE_LABEL: Record<RetrievalMode, string> = {
-  vector: "Vector",
-  lexical: "Kata kunci",
-  hybrid: "Hybrid (RRF)",
-  hybrid_rerank: "Hybrid + rerank",
-};

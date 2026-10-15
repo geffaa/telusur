@@ -6,9 +6,12 @@ import { PdfQuote } from "@/components/chat/pdf-quote";
 import { Button } from "@/components/ui/button";
 import { API_URL, type Source } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
-function pages(s: Source) {
-  return s.page_start === s.page_end ? `hal. ${s.page_start}` : `hal. ${s.page_start}–${s.page_end}`;
+function pages(s: Source, t: ReturnType<typeof useT>["t"]) {
+  return s.page_start === s.page_end
+    ? t("common.page", { n: s.page_start })
+    : t("common.pages", { from: s.page_start, to: s.page_end });
 }
 
 export function SourcePanel({
@@ -22,6 +25,7 @@ export function SourcePanel({
   onSelect: (marker: number) => void;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const source = sources.find((s) => s.marker === active) ?? sources[0];
   if (!source) return null;
   const isPdf = source.mime === "application/pdf";
@@ -30,8 +34,8 @@ export function SourcePanel({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
-        <p className="text-sm font-medium">Sumber</p>
-        <Button variant="ghost" size="icon" className="size-8" onClick={onClose} aria-label="Tutup sumber">
+        <p className="text-sm font-medium">{t("source.title")}</p>
+        <Button variant="ghost" size="icon" className="size-8" onClick={onClose} aria-label={t("source.close")}>
           <X className="size-4" />
         </Button>
       </div>
@@ -57,7 +61,7 @@ export function SourcePanel({
         <div className="space-y-3 px-4 py-4">
           {source.available === false ? (
             <p className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Lock className="mt-0.5 size-4 shrink-0" /> Anda tidak lagi memiliki akses ke dokumen ini.
+              <Lock className="mt-0.5 size-4 shrink-0" /> {t("source.revoked")}
             </p>
           ) : (
             <>
@@ -68,10 +72,10 @@ export function SourcePanel({
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {source.heading_path && <>{source.heading_path} · </>}
-                  {pages(source)} · versi {source.version}
+                  {pages(source, t)} · {t("common.version", { n: source.version })}
                 </p>
                 {source.cited === false && (
-                  <p className="mt-1 text-xs text-muted-foreground">Ditemukan saat mencari, tetapi tidak dikutip.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("source.notCited")}</p>
                 )}
               </div>
               <blockquote className="border-l-2 border-brand/40 pl-3 text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
@@ -80,7 +84,7 @@ export function SourcePanel({
               </blockquote>
               <Button variant="outline" size="sm" asChild>
                 <a href={isPdf ? `${fileUrl}#page=${source.page_start}` : fileUrl} target="_blank" rel="noreferrer">
-                  <ExternalLink className="size-3.5" /> {isPdf ? `Buka di ${pages(source)}` : "Buka dokumen"}
+                  <ExternalLink className="size-3.5" /> {isPdf ? t("source.openPage", { pages: pages(source, t) }) : t("source.openDocument")}
                 </a>
               </Button>
             </>
