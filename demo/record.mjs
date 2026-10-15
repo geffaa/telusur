@@ -143,7 +143,7 @@ async function typeSlow(selector, text, delay = 45) {
   }
 }
 
-const answers = () => page.evaluate(() => document.querySelectorAll("[aria-label='Jawaban membantu']").length);
+const answers = () => page.evaluate(() => document.querySelectorAll("[aria-label='Helpful answer']").length);
 
 async function ask(question) {
   const before = await answers();
@@ -152,7 +152,7 @@ async function ask(question) {
   await sleep(300);
   await page.keyboard.press("Enter");
   await page.waitForFunction(
-    (n) => document.querySelectorAll("[aria-label='Jawaban membantu']").length > n,
+    (n) => document.querySelectorAll("[aria-label='Helpful answer']").length > n,
     { timeout: 90000 },
     before,
   );
@@ -251,92 +251,94 @@ await still(
 
 await record("02-cited-answer", async () => {
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle0" });
-  await caption("Masuk sebagai <b>karyawan</b> (Staff) di workspace PT Nusantara Sejahtera", 1800);
-  await login("Karyawan");
-  await caption("Bertanya dalam bahasa sehari-hari", 600);
-  await ask("Berapa uang harian manager untuk dinas ke Surabaya?");
-  await caption("Jawaban streaming — setiap fakta diberi <b>nomor sitasi</b>", 2400);
+  await caption("Sign in as an <b>employee</b> (Staff) of PT Nusantara Sejahtera", 1800);
+  await login("Employee");
+  await caption("Ask in plain English — the policies are written in Indonesian", 900);
+  await ask("What is a manager's daily allowance for a business trip to Surabaya?");
+  await caption("Streaming answer — every fact carries a <b>citation</b>", 2400);
   await clickOn(".prose-answer button");
-  await sleep(1800);
-  await caption("Klik sitasi: kutipan dan <b>PDF terbuka di halaman sumbernya</b>", 3400);
-  await clickOn("[aria-label='Tutup sumber']");
+  await sleep(2200);
+  await caption("Open a citation: the quote, and the <b>PDF page with the passage highlighted</b>", 3600);
+  await clickOn("[aria-label='Close source']");
   await caption("", 200);
 });
 
 await record("03-follow-up-and-acl", async () => {
-  await ask("kalau untuk staff, berapa plafon hotelnya?");
-  await caption("Pertanyaan lanjutan dipahami dari <b>konteks percakapan</b>", 2600);
-  await ask("Berapa gaji pokok direktur utama?");
-  await caption("Dokumen remunerasi hanya untuk Direksi — Staff <b>tidak pernah melihat isinya</b>", 3600);
+  await ask("And for staff, what's the hotel limit?");
+  await caption("Follow-up questions use the <b>conversation context</b>", 2600);
+  await ask("What is the managing director's base salary?");
+  await caption("The pay document is for directors only — Staff <b>never sees its contents</b>", 3600);
   await caption("", 200);
 });
 
 await record("04-direksi", async () => {
   await logout();
-  await login("Direksi");
-  await caption("Pertanyaan yang sama, sekarang sebagai <b>Direksi</b>", 600);
-  await ask("Berapa gaji pokok direktur utama?");
-  await caption("Terjawab, dengan sumber: hak akses dicek <b>di dalam query pencarian</b>", 3000);
-  await ask("Can I use my personal laptop for VPN?");
-  await caption("Pertanyaan berbahasa Inggris dijawab dari <b>dokumen berbahasa Indonesia</b>", 3000);
+  await login("Director");
+  await caption("The same question, now as a <b>director</b>", 600);
+  await ask("What is the managing director's base salary?");
+  await caption("Answered with its source: access is checked <b>inside the search query</b>", 3200);
   await caption("", 200);
 });
 
 await record("05-knowledge-admin", async () => {
   await logout();
   await login("Knowledge Admin");
-  await caption("Admin pengetahuan: kondisi dokumen dan pemakaian dalam satu layar", 2800);
+  await caption("Knowledge admin: document health and usage on one screen", 2800);
   await clickOn("nav a", "Collections");
   await settle();
   await clickOn("a", "Kebijakan HR");
   await settle();
-  await caption("Status ingestion, versi, dan jumlah potongan per dokumen", 2000);
+  await caption("Ingestion status, versions and chunk counts per document", 2000);
   await clickOn("a", "Struktur Remunerasi Direksi 2026");
   await settle();
-  await caption("Dokumen dipotong per section — lengkap dengan halaman untuk sitasi", 2400);
+  await caption("Documents are split by section, with page numbers for citations", 2400);
   await clickOn("button", "Direksi");
   await sleep(500);
-  await caption("Hak akses per collection atau per dokumen, <b>berlaku seketika</b>", 3000);
+  await caption("Access per collection or per document, <b>effective immediately</b>", 3000);
   await page.keyboard.press("Escape");
   await caption("", 200);
 });
 
 await record("06-access-check-and-gaps", async () => {
-  await clickOn("nav a", "Cek akses");
+  await clickOn("nav a", "Access check");
   await settle();
   await clickOn("[role=combobox]");
   await sleep(300);
   await clickOn("[role=option]", "Sari Staff");
-  await typeSlow("#q", "Berapa gaji pokok direktur utama?", 25);
-  await clickOn("button", "Periksa");
-  await page.waitForFunction(() => document.body.innerText.includes("bisa membaca"));
-  await caption("Cek akses: lihat apa yang akan didapat seseorang, <b>tanpa memanggil AI</b>", 3400);
-  await clickOn("nav a", "Tak terjawab");
+  await typeSlow("#q", "What is the managing director's base salary?", 25);
+  await clickOn("button", "Check");
+  await page.waitForFunction(() => document.body.innerText.includes("can read"));
+  await caption("Access check: see what someone would get, <b>without calling the AI</b>", 3400);
+  await clickOn("nav a", "Unanswered");
   await settle();
-  await caption("Pertanyaan yang tidak terjawab dikumpulkan <b>per topik</b> untuk ditindaklanjuti", 2800);
+  await caption("Questions nobody could answer are grouped <b>by topic</b> for follow-up", 2800);
   await caption("", 200);
 });
 
 await record("07-evaluation", async () => {
-  await clickOn("nav a", "Evaluasi");
+  await clickOn("nav a", "Evaluation");
   await page.waitForFunction(() => document.body.innerText.includes("Hybrid + rerank"));
   await sleep(500);
-  await caption("Kualitas diukur, bukan diklaim: 4 metode pencarian dibandingkan pada 71 pertanyaan uji", 3600);
+  await caption("Quality is measured, not claimed: retrieval methods compared on 71 test questions", 3600);
   await clickOn("tbody tr.cursor-pointer");
   await sleep(500);
-  await caption("Setiap kegagalan bisa dibedah: sumber yang diharapkan vs yang ditemukan", 3000);
+  await caption("Every failure can be inspected: expected source vs what was found", 3000);
   await caption("", 200);
 });
 
-await record("08-audit", async () => {
+await record("08-audit-and-language", async () => {
   await logout();
   await login("Tenant Admin");
   await clickOn("nav a", "Audit log");
-  await page.waitForFunction(() => document.body.innerText.includes("Bertanya"));
+  await page.waitForFunction(() => document.body.innerText.includes("Asked"));
   await sleep(400);
-  await clickOn("tbody tr", "Bertanya");
+  await clickOn("tbody tr", "Asked");
   await sleep(400);
-  await caption("Audit log <b>append-only</b>: siapa bertanya apa, sumber mana yang dipakai, siapa mengubah akses", 3800);
+  await caption("<b>Append-only</b> audit log: who asked what, which sources were used, who changed access", 3800);
+  await clickOn("[role=radio]", "ID");
+  await sleep(900);
+  await caption("The whole interface switches to <b>Indonesian</b> in one click", 2800);
+  await clickOn("[role=radio]", "EN");
   await caption("", 200);
 });
 
@@ -352,13 +354,13 @@ await still(
       <tr><td>Keyword only</td><td>0.60</td><td>0.71</td><td>—</td><td>—</td></tr>
       <tr><td>Vector only (bge-m3)</td><td>0.84</td><td>0.89</td><td>—</td><td>—</td></tr>
       <tr><td>Hybrid (RRF)</td><td>0.72</td><td>0.83</td><td>—</td><td>—</td></tr>
-      <tr class="best"><td>Hybrid + rerank + query translation</td><td>0.97</td><td>0.98</td><td>100%</td><td>2%</td></tr>
+      <tr class="best"><td>Hybrid + rerank, three Indonesian paraphrases</td><td>0.97</td><td>0.98</td><td>100%</td><td>0%</td></tr>
     </table>
     <div class="grid">
       <div class="card"><div class="num">0.97</div><div class="lab">Faithfulness (LLM judge)</div></div>
       <div class="card"><div class="num">0.94</div><div class="lab">Answer correctness</div></div>
       <div class="card"><div class="num">0</div><div class="lab">Restricted documents leaked</div></div>
-      <div class="card"><div class="num">10→2%</div><div class="lab">False refusals after query translation</div></div>
+      <div class="card"><div class="num">10→0%</div><div class="lab">False refusals after multilingual search</div></div>
     </div>
     <div class="chips"><span>FastAPI</span><span>Next.js</span><span>Postgres + pgvector</span><span>bge-m3 + bge-reranker</span><span>Groq (free tier)</span><span>github.com/geffaa/telusur</span></div>
   </div>`,

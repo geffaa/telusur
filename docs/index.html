@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Telusur — Enterprise RAG Assistant</title>
-<meta name="description" content="Internal knowledge assistant that answers from company documents with page citations, enforces per-document access in retrieval, keeps an append-only audit log, and is measured with an evaluation harness. 2:43 demo.">
+<meta name="description" content="Internal knowledge assistant that answers from company documents with page citations, enforces per-document access in retrieval, keeps an append-only audit log, and is measured with an evaluation harness. 2:54 demo.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://geffaa.github.io/telusur/">
 <meta property="og:title" content="Telusur — enterprise RAG assistant (portfolio)">
@@ -83,27 +83,27 @@
   <header>
     <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h9M4 10.5h5M4 15h4"/><circle cx="15.5" cy="13.5" r="4"/><path d="m18.5 16.5 2.5 2.5"/></svg></div>
     <h1>Telusur<span>.</span></h1>
-    <p class="lede">An internal knowledge assistant for mid-size and large companies. Employees ask in plain language and get answers <b>from company documents, with the page cited</b>, drawn only from <b>documents they are allowed to read</b>. Admins get versioning, an append-only audit log, unanswered-question topics, and a <b>measured evaluation</b> of answer quality.</p>
+    <p class="lede">An internal knowledge assistant (English and Indonesian interface) for mid-size and large companies. Employees ask in plain language and get answers <b>from company documents, with the page cited</b>, drawn only from <b>documents they are allowed to read</b>. Admins get versioning, an append-only audit log, unanswered-question topics, and a <b>measured evaluation</b> of answer quality.</p>
   </header>
 
   <section aria-label="Demo video">
     <video id="demo" controls playsinline preload="metadata" poster="poster.jpg">
       <source src="telusur-demo.mp4" type="video/mp4">
     </video>
-    <p class="note">2:43 · no sound · Indonesian UI with captions · recorded locally on the fictional PT Nusantara Sejahtera policy set.</p>
+    <p class="note">2:54 · no sound · English interface with captions · recorded locally on the fictional PT Nusantara Sejahtera policy set (documents in Indonesian).</p>
   </section>
 
   <section aria-labelledby="ch-h">
     <h2 id="ch-h">Chapters</h2>
     <ol class="chapters" id="chapters">
-      <li><button type="button" data-t="4.2"><time>0:04</time><span class="ch-title">Cited answers</span><span class="ch-desc">Streaming answer with citation markers; the source panel opens the PDF at the cited page.</span></button></li>
-      <li><button type="button" data-t="28.8"><time>0:28</time><span class="ch-title">Follow-ups &amp; access control</span><span class="ch-desc">Context-aware follow-up. A Staff user asking about director pay is refused.</span></button></li>
-      <li><button type="button" data-t="48.7"><time>0:48</time><span class="ch-title">Same question, different reader</span><span class="ch-desc">A director gets the answer. An English question is answered from Indonesian documents.</span></button></li>
-      <li><button type="button" data-t="76"><time>1:16</time><span class="ch-title">Knowledge admin</span><span class="ch-desc">Overview, ingestion status, section-level chunks, per-document access rules.</span></button></li>
-      <li><button type="button" data-t="110.6"><time>1:50</time><span class="ch-title">Access check &amp; gaps</span><span class="ch-desc">Simulate what a person would retrieve, no LLM call. Unanswered questions grouped by topic.</span></button></li>
-      <li><button type="button" data-t="132.7"><time>2:12</time><span class="ch-title">Evaluation</span><span class="ch-desc">Four retrieval methods compared on 71 test questions, with per-question drill-down.</span></button></li>
-      <li><button type="button" data-t="142.2"><time>2:22</time><span class="ch-title">Audit log</span><span class="ch-desc">Append-only record of questions, sources used, and access changes.</span></button></li>
-      <li><button type="button" data-t="156.4"><time>2:36</time><span class="ch-title">Results</span><span class="ch-desc">The numbers, and what changed them.</span></button></li>
+      <li><button type="button" data-t="4.2"><time>0:04</time><span class="ch-title">Cited answers, in English</span><span class="ch-desc">An English question answered from Indonesian policies; the source panel opens the PDF page with the quote highlighted.</span></button></li>
+      <li><button type="button" data-t="43.5"><time>0:43</time><span class="ch-title">Follow-ups &amp; access control</span><span class="ch-desc">A context-aware follow-up from a table. A Staff user asking about director pay is refused.</span></button></li>
+      <li><button type="button" data-t="80.8"><time>1:20</time><span class="ch-title">Same question, different reader</span><span class="ch-desc">A director gets the answer, with its source.</span></button></li>
+      <li><button type="button" data-t="106.4"><time>1:46</time><span class="ch-title">Knowledge admin</span><span class="ch-desc">Ingestion status, section-level chunks, per-document access rules.</span></button></li>
+      <li><button type="button" data-t="127"><time>2:07</time><span class="ch-title">Access check &amp; gaps</span><span class="ch-desc">Simulate what a person would retrieve, no LLM call. Unanswered questions grouped by topic.</span></button></li>
+      <li><button type="button" data-t="140.5"><time>2:20</time><span class="ch-title">Evaluation</span><span class="ch-desc">Retrieval methods compared on 71 test questions, with per-question drill-down.</span></button></li>
+      <li><button type="button" data-t="150.1"><time>2:30</time><span class="ch-title">Audit log &amp; languages</span><span class="ch-desc">Append-only record of questions, sources and access changes; the interface switches to Indonesian.</span></button></li>
+      <li><button type="button" data-t="166.8"><time>2:46</time><span class="ch-title">Results</span><span class="ch-desc">The numbers, and what changed them.</span></button></li>
     </ol>
   </section>
 
@@ -116,7 +116,8 @@
         <tr><td>Vector only (bge-m3)</td><td>0.84</td><td>0.95</td><td>0.89</td><td>—</td><td>—</td></tr>
         <tr><td>Hybrid (vector + keyword, RRF)</td><td>0.72</td><td>0.97</td><td>0.83</td><td>—</td><td>—</td></tr>
         <tr><td>Hybrid + rerank, no query translation</td><td>0.95</td><td>1.00</td><td>0.97</td><td>92%</td><td>10%</td></tr>
-        <tr class="best"><td>Hybrid + rerank (production)</td><td>0.97</td><td>1.00</td><td>0.98</td><td>100%</td><td>2%</td></tr>
+        <tr><td>Hybrid + rerank, one translation</td><td>0.97</td><td>1.00</td><td>0.98</td><td>100%</td><td>2%</td></tr>
+        <tr class="best"><td>Hybrid + rerank, three paraphrases (production)</td><td>0.97</td><td>1.00</td><td>0.98</td><td>100%</td><td>0%</td></tr>
       </table>
     </div>
     <div class="stats">
@@ -128,7 +129,7 @@
     <ul class="learn">
       <li><b>The reranker is the component that matters.</b> It lifts Recall@1 from 0.84 to 0.97 and is the only score calibrated enough to decide "I don't know".</li>
       <li><b>Hybrid without reranking was worse than vector alone.</b> Keyword search pulls loosely related passages up; it pays off only as a candidate source for the reranker.</li>
-      <li><b>Every false refusal was an English question</b> whose right passage was already ranked first; cross-lingual reranker scores were too low. Translating the query before search cut false refusals from 10% to 2%.</li>
+      <li><b>Every false refusal was an English question</b> whose right passage was already ranked first; cross-lingual reranker scores were too low. Translating the query cut false refusals from 10% to 2%; searching with three Indonesian paraphrases took them to 0%, because one translation can pick words the documents don't use (“maternity leave” → “cuti hamil” instead of “cuti melahirkan”).</li>
     </ul>
   </section>
 

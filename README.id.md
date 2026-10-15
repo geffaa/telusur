@@ -1,11 +1,15 @@
 # Telusur
 
-**[▶ Tonton demo 2:43 dan studi kasus](https://geffaa.github.io/telusur/)** · video: [`docs/telusur-demo.mp4`](docs/telusur-demo.mp4)
+[English](README.md) · **Bahasa Indonesia**
+
+**[▶ Tonton demo 2:54 dan studi kasus](https://geffaa.github.io/telusur/)** · video: [`docs/telusur-demo.mp4`](docs/telusur-demo.mp4)
 
 [![Jawaban dengan sitasi; panel sumber membuka PDF di halaman yang dikutip](docs/poster.jpg)](https://geffaa.github.io/telusur/)
 
 Asisten pengetahuan internal (RAG) untuk perusahaan: jawaban dari dokumen internal dengan sitasi,
 hanya dari dokumen yang boleh dilihat penanya. Rencana lengkap: [BREAKDOWN.md](BREAKDOWN.md).
+
+Antarmuka tersedia dalam bahasa Inggris dan Indonesia (switcher di sidebar).
 
 **Status:** Milestone 1–4 selesai, Milestone 5 sebagian (highlight kutipan di PDF, load test; deploy VPS belum): multi-tenant + RLS, ingestion PDF/DOCX/MD dengan chunking
 struktural, hak akses per collection/dokumen, retrieval hybrid (vector + full-text + RRF + reranker),
@@ -90,7 +94,8 @@ jawaban di dokumen, dan 3 pertanyaan tentang dokumen yang tidak boleh diakses pe
 | Vector saja (bge-m3) | 0,84 | 0,95 | 0,89 | n/a | n/a |
 | Hybrid (vector + kata kunci, RRF) | 0,72 | 0,97 | 0,83 | n/a | n/a |
 | Hybrid + rerank, tanpa terjemahan query | 0,95 | 1,00 | 0,97 | 0,92 | 0,10 |
-| **Hybrid + rerank (produksi)** | **0,97** | **1,00** | **0,98** | **1,00** | **0,02** |
+| Hybrid + rerank, satu terjemahan | 0,97 | 1,00 | 0,98 | 1,00 | 0,02 |
+| **Hybrid + rerank, tiga parafrase (produksi)** | **0,97** | **1,00** | **0,98** | **1,00** | **0,00** |
 
 Kualitas jawaban konfigurasi produksi (dijawab `gpt-oss-120b`, dinilai juri `gpt-oss-20b`):
 
@@ -105,9 +110,12 @@ Yang dipelajari dari angka ini:
 - **Hybrid tanpa rerank lebih buruk dari vector saja** (MRR 0,83 vs 0,89): pencarian kata kunci
   menarik banyak kandidat yang tidak relevan ke peringkat atas. Gunanya baru terasa sebagai
   penyedia kandidat untuk reranker.
-- **Terjemahan query memperbaiki penolakan keliru dari 10% ke 2%.** Semua penolakan keliru
-  awalnya pertanyaan berbahasa Inggris yang sumbernya sudah di peringkat 1, tetapi skor reranker
-  lintas bahasa terlalu rendah. Sekarang pertanyaan non-Indonesia diterjemahkan sebelum dicari.
+- **Terjemahan query memperbaiki penolakan keliru dari 10% ke 2%, tiga parafrase ke 0%.** Semua
+  penolakan keliru awalnya pertanyaan berbahasa Inggris yang sumbernya sudah di peringkat 1, tetapi
+  skor reranker lintas bahasa terlalu rendah. Satu terjemahan kadang memilih kata yang tidak dipakai
+  dokumen ("maternity leave" → "cuti hamil", bukan "cuti melahirkan"), jadi pertanyaan non-Indonesia
+  kini dicari dengan tiga parafrase dan tiap passage memakai skor rerank terbaiknya. Harganya:
+  retrieval untuk pertanyaan non-Indonesia ±3× lebih lama daripada pertanyaan Indonesia.
 - **Ambang "tidak tahu" 0,35 dipilih dari data:** 0,34–0,40 menolak semua 13 kasus negatif sambil
   hanya salah menolak 1 dari 58.
 
@@ -190,7 +198,7 @@ uv run python -m scripts.loadtest --base http://localhost:8001 --users 1 5 10 20
   worker start, versi yang tertinggal di tengah pipeline diantrekan ulang.
 - **ACL di dalam query retrieval.** Filter akses ada di SQL vector/full-text search, sehingga chunk
   terlarang tidak pernah sampai ke reranker maupun LLM. Hak akses dievaluasi live dari keanggotaan grup.
-- **"Tidak tahu" sebelum memanggil LLM.** Bila skor reranker tertinggi di bawah ambang (0,3), LLM
+- **"Tidak tahu" sebelum memanggil LLM.** Bila skor reranker tertinggi di bawah ambang (0,35), LLM
   tidak dipanggil sama sekali: lebih murah dan tidak mungkin berhalusinasi.
 - **Sitasi diverifikasi.** Nomor sitasi yang tidak ada di konteks dibuang; kutipan disimpan sebagai
   snapshot dan disembunyikan bila akses pembaca ke dokumen itu kemudian dicabut.
