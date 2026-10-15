@@ -39,8 +39,8 @@ export function Answer({
                 onClick={() => onCite(marker)}
                 title={source ? `${source.title} · hal. ${source.page_start}` : undefined}
                 className={cn(
-                  "mx-0.5 inline-flex h-[18px] min-w-[18px] -translate-y-px items-center justify-center rounded border px-1 align-middle font-mono text-[11px] leading-none text-muted-foreground hover:border-foreground/40 hover:text-foreground",
-                  activeMarker === marker && "border-foreground bg-foreground text-background hover:text-background",
+                  "mx-0.5 inline-flex h-[18px] min-w-[18px] -translate-y-px items-center justify-center rounded-md bg-brand-soft px-1 align-middle font-mono text-[11px] leading-none font-semibold text-brand-strong transition-colors hover:bg-brand hover:text-primary-foreground",
+                  activeMarker === marker && "bg-brand text-primary-foreground",
                 )}
               >
                 {marker}
@@ -49,12 +49,14 @@ export function Answer({
           },
           table({ children }) {
             return (
-              <div className="my-3 overflow-x-auto rounded-md border">
+              <div className="surface my-3 overflow-x-auto">
                 <table className="w-full text-sm">{children}</table>
               </div>
             );
           },
-          th: ({ children }) => <th className="border-b bg-muted/50 px-3 py-1.5 text-left font-medium">{children}</th>,
+          th: ({ children }) => (
+            <th className="border-b bg-muted/60 px-3 py-1.5 text-left text-xs font-medium text-muted-foreground">{children}</th>
+          ),
           td: ({ children }) => <td className="border-b px-3 py-1.5 tabular-nums">{children}</td>,
           ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-5">{children}</ul>,
           ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5">{children}</ol>,

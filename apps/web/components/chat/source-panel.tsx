@@ -42,7 +42,7 @@ export function SourcePanel({
             onClick={() => onSelect(s.marker)}
             className={cn(
               "shrink-0 rounded px-2 py-1 font-mono text-xs",
-              s.marker === source.marker ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
+              s.marker === source.marker ? "bg-brand text-primary-foreground" : "text-muted-foreground hover:bg-muted",
               s.cited === false && s.marker !== source.marker && "opacity-50",
             )}
             title={s.title}
@@ -73,7 +73,7 @@ export function SourcePanel({
                   <p className="mt-1 text-xs text-muted-foreground">Ditemukan saat mencari, tetapi tidak dikutip.</p>
                 )}
               </div>
-              <blockquote className="border-l-2 border-foreground/20 pl-3 text-sm">
+              <blockquote className="border-l-2 border-brand/40 pl-3 text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
                 {/* Quotes can be Markdown tables; render them the same way answers are. */}
                 <Answer content={source.quote ?? ""} sources={[]} onCite={() => {}} />
               </blockquote>

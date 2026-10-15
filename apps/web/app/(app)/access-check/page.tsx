@@ -35,7 +35,7 @@ export default function AccessCheckPage() {
         description="Lihat dokumen apa yang bisa dibaca seseorang, dan sumber apa yang akan dipakai untuk menjawab pertanyaannya. Tidak memanggil AI dan tidak mengubah apa pun."
       />
       <form
-        className="mb-6 grid gap-3 rounded-lg border p-4 md:grid-cols-[16rem_minmax(0,1fr)_auto] md:items-end"
+        className="mb-6 grid gap-3 surface p-4 md:grid-cols-[16rem_minmax(0,1fr)_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           if (userId) check.mutate();
@@ -79,11 +79,11 @@ export default function AccessCheckPage() {
             <p className="mb-3 text-xs text-muted-foreground">
               Grup: {result.groups.length ? result.groups.join(", ") : "tidak ada"}
             </p>
-            <ul className="divide-y rounded-lg border text-sm">
+            <ul className="divide-y surface text-sm">
               {[...readable, ...hidden].map((d) => (
                 <li key={d.id} className={cn("flex items-center gap-3 px-3 py-2", !d.readable && "text-muted-foreground")}>
                   {d.readable ? (
-                    <Check className="size-4 shrink-0 text-emerald-600" />
+                    <Check className="size-4 shrink-0 text-success" />
                   ) : (
                     <Lock className="size-4 shrink-0" />
                   )}
@@ -101,7 +101,7 @@ export default function AccessCheckPage() {
                   ? `Asisten akan menjawab "tidak menemukan" (relevansi tertinggi ${result.retrieval.top_score}, di bawah ambang).`
                   : `Asisten akan menjawab memakai sumber teratas (relevansi tertinggi ${result.retrieval.top_score}).`}
               </p>
-              <ol className="divide-y rounded-lg border">
+              <ol className="divide-y surface">
                 {result.retrieval.passages.map((p, i) => (
                   <li key={i} className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 px-3 py-2.5 text-sm">
                     <span className="font-mono text-xs text-muted-foreground tabular-nums">{p.score.toFixed(3)}</span>

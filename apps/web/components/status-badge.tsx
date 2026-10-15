@@ -9,23 +9,25 @@ const LABELS: Record<VersionStatus, string> = {
   failed: "Gagal",
 };
 
-const DOT: Record<VersionStatus, string> = {
-  queued: "bg-muted-foreground/50",
-  parsing: "bg-blue-500 animate-pulse",
-  embedding: "bg-violet-500 animate-pulse",
-  ready: "bg-emerald-500",
-  failed: "bg-red-500",
+const STYLES: Record<VersionStatus, string> = {
+  queued: "bg-muted text-muted-foreground",
+  parsing: "bg-info-soft text-info",
+  embedding: "bg-info-soft text-info",
+  ready: "bg-success-soft text-success",
+  failed: "bg-danger-soft text-danger",
 };
 
-export function StatusBadge({ status }: { status: VersionStatus }) {
+export function StatusBadge({ status, className }: { status: VersionStatus; className?: string }) {
+  const busy = status === "parsing" || status === "embedding" || status === "queued";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 text-sm whitespace-nowrap",
-        status === "failed" ? "text-red-700 dark:text-red-400" : "text-foreground",
+        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+        STYLES[status],
+        className,
       )}
     >
-      <span className={cn("size-1.5 rounded-full", DOT[status])} aria-hidden />
+      <span className={cn("size-1.5 rounded-full bg-current", busy && "animate-pulse")} aria-hidden />
       {LABELS[status]}
     </span>
   );

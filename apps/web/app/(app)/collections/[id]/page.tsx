@@ -16,7 +16,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useMe } from "@/hooks/use-me";
 import { api, canManage, IN_PROGRESS, type Collection, type DocumentItem } from "@/lib/api";
 import { formatBytes, timeAgo } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 const ACCEPT = ".pdf,.docx,.md,.markdown,.txt";
 type Filter = "all" | "ready" | "processing" | "failed";
@@ -136,7 +135,7 @@ export default function CollectionPage() {
             className="pl-8"
           />
         </div>
-        <div className="flex rounded-md border p-0.5 text-sm" role="tablist">
+        <div className="segmented" role="tablist">
           {(
             [
               ["all", "Semua"],
@@ -150,10 +149,6 @@ export default function CollectionPage() {
               role="tab"
               aria-selected={filter === key}
               onClick={() => setFilter(key)}
-              className={cn(
-                "rounded px-2.5 py-1 text-muted-foreground",
-                filter === key && "bg-muted font-medium text-foreground",
-              )}
             >
               {label} <span className="tabular-nums opacity-60">{counts[key]}</span>
             </button>
@@ -166,7 +161,7 @@ export default function CollectionPage() {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto surface">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -206,7 +201,7 @@ export default function CollectionPage() {
                     {v && <StatusBadge status={v.status} />}
                     {v?.status === "failed" && (
                       <div className="mt-1 flex items-center gap-2">
-                        <p className="max-w-56 truncate text-xs text-red-700" title={v.error ?? ""}>
+                        <p className="max-w-56 truncate text-xs text-danger" title={v.error ?? ""}>
                           {v.error}
                         </p>
                         {admin && (

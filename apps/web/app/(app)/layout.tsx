@@ -15,6 +15,8 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/avatar";
+import { Wordmark } from "@/components/brand";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMe } from "@/hooks/use-me";
 import { api, canManage, ROLE_LABEL, type Role } from "@/lib/api";
@@ -67,26 +69,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const sections = me ? SECTIONS.filter((s) => s.visible(me.role)) : [];
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[224px_1fr]">
-      <aside className="border-b bg-muted/40 md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-b-0">
-        <div className="flex items-center justify-between gap-2 px-4 py-3 md:block md:py-4">
-          <div className="min-w-0">
-            <p className="font-semibold tracking-tight">Telusur</p>
-            {me ? (
-              <p className="truncate text-xs text-muted-foreground">{me.tenant_name}</p>
-            ) : (
-              <Skeleton className="mt-1 h-3 w-28" />
-            )}
-          </div>
+    <div className="min-h-screen md:grid md:grid-cols-[236px_1fr]">
+      <aside className="border-b bg-sidebar md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-b-0">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 md:px-4 md:pt-5 md:pb-4">
+          <Link href="/" className="min-w-0">
+            <Wordmark subtitle={me ? me.tenant_name : <Skeleton className="mt-1 h-3 w-28" />} />
+          </Link>
           <Button variant="ghost" size="icon" className="md:hidden" onClick={logout} aria-label="Keluar">
             <LogOut className="size-4" />
           </Button>
         </div>
-        <nav className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:gap-0 md:overflow-y-auto md:pb-0">
+        <nav className="flex gap-1 overflow-x-auto px-3 pb-2 md:flex-col md:gap-0 md:overflow-y-auto md:pb-0">
           {sections.map((section, i) => (
-            <div key={i} className="flex gap-1 md:mb-3 md:flex-col md:gap-0.5">
+            <div key={i} className="flex gap-1 md:mb-4 md:flex-col md:gap-0.5">
               {section.title && (
-                <p className="hidden px-2.5 pt-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase md:block">
+                <p className="hidden px-2.5 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase md:block">
                   {section.title}
                 </p>
               )}
@@ -96,37 +93,41 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Link
                     key={href}
                     href={href}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
-                      "flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1.5 text-sm",
+                      "flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
                       active
-                        ? "bg-background font-medium shadow-xs ring-1 ring-border"
-                        : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                        ? "bg-card font-medium text-foreground shadow-[0_1px_2px_0_rgb(0_0_0/0.05)] ring-1 ring-border"
+                        : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
                     )}
                   >
-                    <Icon className="size-4" /> {label}
+                    <Icon className={cn("size-4", active && "text-brand")} /> {label}
                   </Link>
                 );
               })}
             </div>
           ))}
         </nav>
-        <div className="mt-auto hidden border-t p-3 md:block">
+        <div className="mt-auto hidden p-3 md:block">
           {me && (
-            <div className="mb-2 px-1">
-              <p className="truncate text-sm font-medium">{me.name}</p>
-              <p className="text-xs text-muted-foreground">{ROLE_LABEL[me.role]}</p>
+            <div className="flex items-center gap-2.5 surface bg-card p-2.5">
+              <Avatar name={me.name} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{me.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{ROLE_LABEL[me.role]}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" onClick={logout} aria-label="Keluar">
+                <LogOut className="size-4" />
+              </Button>
             </div>
           )}
-          <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={logout}>
-            <LogOut className="size-4" /> Keluar
-          </Button>
         </div>
       </aside>
       {pathname.startsWith("/chat") ? (
         <main className="min-w-0">{children}</main>
       ) : (
-        <main className="min-w-0 px-4 py-6 md:px-8 md:py-8">
-          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+        <main className="min-w-0 px-4 py-6 md:px-10 md:py-9">
+          <div className="mx-auto w-full max-w-[1360px]">{children}</div>
         </main>
       )}
     </div>

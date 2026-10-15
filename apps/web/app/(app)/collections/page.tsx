@@ -45,7 +45,7 @@ export default function CollectionsPage() {
         description="Dokumen dikelompokkan per collection. Hak akses nantinya diatur di level ini."
         actions={canManage(me?.role) && <CreateCollectionDialog />}
       />
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto surface">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -109,7 +109,7 @@ export default function CollectionsPage() {
 function Health({ counts }: { counts?: CollectionHealth["counts"] }) {
   if (!counts) return <span className="text-sm text-muted-foreground">Kosong</span>;
   const parts = [
-    counts.failed > 0 && <span key="f" className="text-red-700 dark:text-red-400">{counts.failed} gagal</span>,
+    counts.failed > 0 && <span key="f" className="text-danger">{counts.failed} gagal</span>,
     counts.processing > 0 && <span key="p">{counts.processing} diproses</span>,
     counts.ready > 0 && <span key="r" className="text-muted-foreground">{counts.ready} siap</span>,
   ].filter(Boolean);

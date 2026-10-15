@@ -135,8 +135,8 @@ export default function DocumentPage() {
                   className={cn(
                     "w-full rounded-md border px-3 py-2 text-left text-sm",
                     v.version === version
-                      ? "border-foreground/30 bg-muted"
-                      : "border-transparent hover:bg-muted/60",
+                      ? "border-brand/40 bg-brand-soft"
+                      : "border-transparent hover:bg-brand-soft/40",
                   )}
                 >
                   <span className="flex items-center justify-between gap-2">
@@ -214,7 +214,7 @@ export default function DocumentPage() {
             <Notice>Tidak ada potongan yang mengandung “{query}”.</Notice>
           )}
 
-          <ol className="divide-y rounded-lg border empty:hidden">
+          <ol className="divide-y surface empty:hidden">
             {visible?.map((c) => (
               <li
                 key={c.id}
@@ -266,7 +266,7 @@ function Notice({
       className={cn(
         "mb-3 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm",
         tone === "bad"
-          ? "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+          ? "border-danger/20 bg-danger-soft text-danger"
           : "text-muted-foreground",
       )}
     >
@@ -284,7 +284,7 @@ function Highlight({ text, needle }: { text: string; needle: string }) {
     p.toLowerCase() === needle ? (
       <mark
         key={i}
-        className="rounded-sm bg-yellow-200 px-0.5 dark:bg-yellow-800"
+        className="rounded-sm bg-warning-soft px-0.5 text-foreground"
       >
         {p}
       </mark>

@@ -37,7 +37,7 @@ export default function GapsPage() {
       />
       {isLoading && <Skeleton className="h-48 rounded-lg" />}
       {data?.length === 0 && (
-        <div className="rounded-lg border px-6 py-14 text-center">
+        <div className="surface px-6 py-14 text-center">
           <p className="font-medium">Tidak ada pertanyaan yang tertunda</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Setiap pertanyaan yang tidak terjawab akan muncul di sini, dikelompokkan menurut maknanya.
@@ -45,7 +45,7 @@ export default function GapsPage() {
         </div>
       )}
       {data && data.length > 0 && (
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-hidden surface">
           <div className="hidden grid-cols-[minmax(0,1fr)_6rem_6rem_9rem_8rem] gap-4 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground md:grid">
             <span>Topik (pertanyaan terbaru)</span>
             <span className="text-right">Penanya</span>
@@ -107,7 +107,7 @@ function GapRow({ cluster, onResolve, busy }: { cluster: GapCluster; onResolve: 
         </div>
       </div>
       {open && (
-        <ul className="space-y-1 border-t bg-muted/20 px-4 py-3 pl-10 text-sm">
+        <ul className="space-y-1 border-t bg-muted/40 px-4 py-3 pl-10 text-sm">
           {cluster.examples.map((e) => (
             <li key={e.id} className="flex justify-between gap-4">
               <span>{e.query}</span>

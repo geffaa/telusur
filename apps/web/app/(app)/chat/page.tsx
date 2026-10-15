@@ -1,10 +1,23 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, Loader2, MessageSquarePlus, Square, Trash2 } from "lucide-react";
+import {
+  ArrowUp,
+  Baby,
+  FileText,
+  Laptop,
+  Loader2,
+  MessageSquarePlus,
+  Plane,
+  Receipt,
+  SearchX,
+  Square,
+  Trash2,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { BrandMark } from "@/components/brand";
 import { Answer } from "@/components/chat/answer";
 import { FeedbackButtons } from "@/components/chat/feedback";
 import { SourcePanel } from "@/components/chat/source-panel";
@@ -143,11 +156,11 @@ function Chat() {
     <div
       className={cn(
         "grid h-[calc(100dvh-7.5rem)] min-h-0 md:h-dvh",
-        panel ? "lg:grid-cols-[240px_minmax(0,1fr)_400px]" : "lg:grid-cols-[240px_minmax(0,1fr)]",
+        panel ? "lg:grid-cols-[240px_minmax(0,1fr)_440px]" : "lg:grid-cols-[240px_minmax(0,1fr)]",
       )}
     >
       {/* Conversation history */}
-      <aside className="hidden min-h-0 flex-col border-r lg:flex">
+      <aside className="hidden min-h-0 flex-col border-r bg-card lg:flex">
         <div className="p-3">
           <Button
             variant="outline"
@@ -169,8 +182,8 @@ function Chat() {
               <button
                 onClick={() => router.push(`/chat?c=${c.id}`)}
                 className={cn(
-                  "w-full rounded-md px-2.5 py-2 pr-8 text-left",
-                  c.id === conversationId ? "bg-muted" : "hover:bg-muted/60",
+                  "w-full rounded-lg px-2.5 py-2 pr-8 text-left transition-colors",
+                  c.id === conversationId ? "bg-brand-soft text-brand-strong" : "hover:bg-muted",
                 )}
               >
                 <span className="block truncate text-sm">{c.title}</span>
@@ -245,7 +258,7 @@ function Chat() {
                       </AssistantBlock>
                     )}
                     {pending.error && (
-                      <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                      <div className="flex items-center gap-3 rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
                         <span className="flex-1">{pending.error}</span>
                         <Button size="sm" variant="outline" onClick={() => send(pending.question)}>
                           Coba lagi
@@ -267,7 +280,7 @@ function Chat() {
           }}
           className="mx-auto w-full max-w-3xl px-4 pb-4 md:px-6"
         >
-          <div className="flex items-end gap-2 rounded-xl border bg-background p-2 shadow-xs focus-within:ring-2 focus-within:ring-ring/40">
+          <div className="flex items-end gap-2 rounded-2xl border bg-card p-2 shadow-[0_2px_10px_-4px_rgb(0_0_0/0.08)] transition focus-within:border-brand/50 focus-within:ring-4 focus-within:ring-brand/10">
             <textarea
               ref={textarea}
               value={input}
@@ -322,7 +335,7 @@ function Chat() {
 function UserBubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <p className="max-w-[85%] rounded-2xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] whitespace-pre-wrap">{text}</p>
+      <p className="max-w-[85%] rounded-2xl rounded-br-md bg-brand px-4 py-2.5 text-[15px] whitespace-pre-wrap text-primary-foreground">{text}</p>
     </div>
   );
 }
@@ -347,9 +360,14 @@ function AssistantBlock({
   const cited = marked.length || refused ? marked : sources;
   return (
     <div>
-      <div className={cn(refused && "text-muted-foreground")}>
+      {refused ? (
+        <div className="flex gap-3 rounded-xl border border-warning/25 bg-warning-soft/60 px-4 py-3 text-sm">
+          <SearchX className="mt-0.5 size-4 shrink-0 text-warning" />
+          <span>{children}</span>
+        </div>
+      ) : (
         <Answer content={children} sources={sources} activeMarker={activeMarker} onCite={onCite} />
-      </div>
+      )}
       {cited.length > 0 && (
         <ul className="mt-3 flex flex-wrap gap-1.5">
           {cited.map((s) => (
@@ -357,11 +375,14 @@ function AssistantBlock({
               <button
                 onClick={() => onCite(s.marker)}
                 className={cn(
-                  "flex max-w-72 items-center gap-1.5 rounded-md border px-2 py-1 text-left text-xs hover:bg-muted",
-                  activeMarker === s.marker && "border-foreground/40 bg-muted",
+                  "flex max-w-72 items-center gap-1.5 rounded-lg border bg-card px-2 py-1 text-left text-xs transition-colors hover:border-brand/40",
+                  activeMarker === s.marker && "border-brand/50 bg-brand-soft",
                 )}
               >
-                <span className="font-mono text-muted-foreground">{s.marker}</span>
+                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded bg-brand-soft font-mono text-[10px] font-semibold text-brand-strong">
+                  {s.marker}
+                </span>
+                <FileText className="size-3 shrink-0 text-muted-foreground" />
                 <span className="truncate">{s.available === false ? "Akses dicabut" : s.title}</span>
                 <span className="shrink-0 text-muted-foreground">hal. {s.page_start}</span>
               </button>
@@ -374,21 +395,31 @@ function AssistantBlock({
   );
 }
 
+const EXAMPLE_ICONS = [Plane, Baby, Receipt, Laptop];
+
 function EmptyState({ onPick }: { onPick: (q: string) => void }) {
   return (
-    <div className="pt-[12vh]">
-      <h1 className="text-xl font-semibold tracking-tight">Tanyakan kebijakan perusahaan</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+    <div className="pt-[10vh]">
+      <BrandMark className="size-11 rounded-xl" />
+      <h1 className="mt-5 text-2xl font-semibold tracking-tight">Tanyakan kebijakan perusahaan</h1>
+      <p className="mt-1.5 max-w-lg text-[15px] text-muted-foreground">
         Telusur menjawab dari dokumen internal yang boleh Anda baca, dan menunjukkan halaman sumbernya.
       </p>
-      <ul className="mt-6 divide-y rounded-lg border">
-        {EXAMPLES.map((q) => (
-          <li key={q}>
-            <button onClick={() => onPick(q)} className="w-full px-4 py-2.5 text-left text-sm hover:bg-muted/60">
-              {q}
-            </button>
-          </li>
-        ))}
+      <ul className="mt-7 grid gap-2.5 sm:grid-cols-2">
+        {EXAMPLES.map((q, i) => {
+          const Icon = EXAMPLE_ICONS[i % EXAMPLE_ICONS.length];
+          return (
+            <li key={q}>
+              <button
+                onClick={() => onPick(q)}
+                className="surface flex h-full w-full items-start gap-3 px-4 py-3 text-left text-sm transition-colors hover:border-brand/40 hover:bg-brand-soft/30"
+              >
+                <Icon className="mt-0.5 size-4 shrink-0 text-brand" />
+                {q}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

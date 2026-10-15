@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, REASON_LABEL, type FeedbackItem } from "@/lib/api";
 import { formatDate, timeAgo } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 type Filter = "all" | "1" | "-1";
 
@@ -33,7 +32,7 @@ export default function FeedbackPage() {
         description="Penilaian karyawan atas jawaban asisten. Mulai dari yang tidak membantu: biasanya tanda dokumen kurang jelas atau usang."
       />
       <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div className="flex rounded-md border p-0.5 text-sm" role="tablist">
+        <div className="segmented" role="tablist">
           {(
             [
               ["-1", "Tidak membantu", data?.negative],
@@ -46,10 +45,6 @@ export default function FeedbackPage() {
               role="tab"
               aria-selected={filter === key}
               onClick={() => setFilter(key)}
-              className={cn(
-                "rounded px-2.5 py-1 text-muted-foreground",
-                filter === key && "bg-muted font-medium text-foreground",
-              )}
             >
               {label} <span className="tabular-nums opacity-60">{n ?? ""}</span>
             </button>
@@ -67,11 +62,11 @@ export default function FeedbackPage() {
 
       {isLoading && <Skeleton className="h-48 rounded-lg" />}
       {data?.items.length === 0 && (
-        <p className="rounded-lg border px-6 py-12 text-center text-sm text-muted-foreground">
+        <p className="surface px-6 py-12 text-center text-sm text-muted-foreground">
           Belum ada feedback di kategori ini.
         </p>
       )}
-      <ul className="divide-y rounded-lg border empty:hidden">
+      <ul className="divide-y surface empty:hidden">
         {data?.items.map((f) => (
           <li
             key={f.id}
@@ -82,7 +77,7 @@ export default function FeedbackPage() {
                 {f.rating === 1 ? (
                   <ThumbsUp className="size-3.5" />
                 ) : (
-                  <ThumbsDown className="size-3.5 text-red-600" />
+                  <ThumbsDown className="size-3.5 text-danger" />
                 )}
                 {f.rating === 1
                   ? "Membantu"
@@ -102,7 +97,7 @@ export default function FeedbackPage() {
               <p className="line-clamp-3 text-muted-foreground">{f.answer}</p>
               {f.rating === -1 && <ToCase feedbackId={f.id} />}
               {f.comment && (
-                <p className="border-l-2 border-foreground/20 pl-3">
+                <p className="border-l-2 border-brand/40 pl-3">
                   <span className="text-xs text-muted-foreground">
                     Komentar:{" "}
                   </span>

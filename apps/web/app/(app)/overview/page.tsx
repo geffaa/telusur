@@ -1,9 +1,21 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, RotateCw, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  FileCheck2,
+  FileWarning,
+  FolderOpen,
+  HelpCircle,
+  Loader,
+  MessagesSquare,
+  RotateCw,
+  ThumbsUp,
+  Upload,
+} from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Metric } from "@/components/metric";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -42,72 +54,79 @@ export default function OverviewPage() {
         }
       />
 
-      <section className="mb-8 grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border lg:grid-cols-4">
+      <section className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Metric
+          icon={FileCheck2}
+          tone="success"
           label="Dokumen siap dijawab"
           value={data?.documents.ready}
-          hint={data && `dari ${total} dokumen`}
+          hint={data && `dari ${total} dokumen · ${formatNumber(data.chunks)} potongan`}
         />
         <Metric
+          icon={Loader}
+          tone="info"
           label="Sedang diproses"
           value={data?.documents.processing}
-          hint={
-            data?.documents.processing
-              ? "diperbarui otomatis"
-              : "antrean kosong"
-          }
+          hint={data?.documents.processing ? "diperbarui otomatis" : "antrean kosong"}
         />
         <Metric
+          icon={FileWarning}
+          tone={data?.documents.failed ? "danger" : "neutral"}
           label="Gagal diproses"
           value={data?.documents.failed}
-          tone={data?.documents.failed ? "bad" : undefined}
-          hint={data?.documents.failed ? "lihat di bawah" : "tidak ada masalah"}
+          hint={data?.documents.failed ? "perlu dicek di bawah" : "tidak ada masalah"}
         />
         <Metric
-          label="Potongan terindeks"
-          value={data?.chunks}
-          hint={data && `${data.collections} collection`}
+          icon={FolderOpen}
+          tone="brand"
+          label="Collection"
+          value={data?.collections}
+          href="/collections"
+          hint="kelola dokumen dan akses →"
         />
       </section>
 
-      <h2 className="mb-3 text-sm font-medium">Pemakaian 7 hari terakhir</h2>
-      <section className="mb-8 grid grid-cols-1 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold">Pemakaian 7 hari terakhir</h2>
+      </div>
+      <section className="mb-9 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Metric
+          icon={MessagesSquare}
+          tone="brand"
           label="Pertanyaan dijawab"
           value={data && data.questions_7d - data.refused_7d}
           hint={data && `${data.questions_7d} pertanyaan masuk`}
         />
-        <LinkMetric href="/gaps">
-          <Metric
-            label="Tidak terjawab"
-            value={data?.refused_7d}
-            hint={data && `${data.open_gaps} menunggu tindak lanjut →`}
-            tone={data?.open_gaps ? "bad" : undefined}
-          />
-        </LinkMetric>
-        <LinkMetric href="/feedback">
-          <Metric
-            label="Dinilai membantu"
-            value={
-              data &&
-              (data.feedback_positive + data.feedback_negative
-                ? Math.round(
-                    (data.feedback_positive /
-                      (data.feedback_positive + data.feedback_negative)) *
-                      100,
-                  )
-                : 0)
-            }
-            suffix="%"
-            hint={data && `${data.feedback_negative} penilaian negatif →`}
-          />
-        </LinkMetric>
+        <Metric
+          icon={HelpCircle}
+          tone={data?.open_gaps ? "warning" : "neutral"}
+          label="Tidak terjawab"
+          value={data?.refused_7d}
+          hint={data && `${data.open_gaps} topik menunggu tindak lanjut →`}
+          href="/gaps"
+        />
+        <Metric
+          icon={ThumbsUp}
+          tone="success"
+          label="Dinilai membantu"
+          value={
+            data &&
+            (data.feedback_positive + data.feedback_negative
+              ? Math.round(
+                  (data.feedback_positive / (data.feedback_positive + data.feedback_negative)) * 100,
+                )
+              : 0)
+          }
+          suffix="%"
+          hint={data && `${data.feedback_positive + data.feedback_negative} penilaian →`}
+          href="/feedback"
+        />
       </section>
 
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <section>
-          <h2 className="mb-3 text-sm font-medium">Aktivitas terbaru</h2>
-          <div className="rounded-lg border">
+          <h2 className="mb-3 text-sm font-semibold">Aktivitas terbaru</h2>
+          <div className="surface">
             {isLoading && <Rows />}
             {data?.recent.length === 0 && (
               <Empty admin={admin} text="Belum ada dokumen di workspace ini." />
@@ -120,8 +139,8 @@ export default function OverviewPage() {
           </div>
         </section>
         <section>
-          <h2 className="mb-3 text-sm font-medium">Perlu perhatian</h2>
-          <div className="rounded-lg border">
+          <h2 className="mb-3 text-sm font-semibold">Perlu perhatian</h2>
+          <div className="surface">
             {isLoading && <Rows />}
             {data && data.attention.length === 0 && (
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -140,63 +159,12 @@ export default function OverviewPage() {
   );
 }
 
-function LinkMetric({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className="block bg-background hover:bg-muted/40 [&>div]:bg-transparent"
-    >
-      {children}
-    </Link>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  hint,
-  tone,
-  suffix,
-}: {
-  label: string;
-  value?: number;
-  hint?: React.ReactNode;
-  tone?: "bad";
-  suffix?: string;
-}) {
-  return (
-    <div className="bg-background px-4 py-4 md:px-5">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      {value === undefined ? (
-        <Skeleton className="mt-2 h-7 w-12" />
-      ) : (
-        <p
-          className={cn(
-            "mt-1 text-2xl font-semibold tabular-nums",
-            tone === "bad" && "text-red-600",
-          )}
-        >
-          {formatNumber(value)}
-          {suffix}
-        </p>
-      )}
-      <p className="mt-0.5 text-xs text-muted-foreground">{hint ?? " "}</p>
-    </div>
-  );
-}
-
 function DocRow({ doc }: { doc: RecentDocument }) {
   return (
     <li>
       <Link
         href={`/documents/${doc.id}`}
-        className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-0.5 px-4 py-2.5 hover:bg-muted/50 sm:grid-cols-[1fr_auto_7rem]"
+        className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-0.5 px-4 py-2.5 hover:bg-brand-soft/40 sm:grid-cols-[1fr_auto_7rem]"
       >
         <span className="min-w-0">
           <span className="block truncate text-sm font-medium">
@@ -228,9 +196,9 @@ function AttentionRow({ doc, admin }: { doc: RecentDocument; admin: boolean }) {
   return (
     <li className="flex items-start gap-3 px-4 py-3">
       {doc.status === "failed" ? (
-        <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-600" />
+        <AlertCircle className="mt-0.5 size-4 shrink-0 text-danger" />
       ) : (
-        <span className="mt-1.5 size-2 shrink-0 animate-pulse rounded-full bg-blue-500" />
+        <span className="mt-1.5 size-2 shrink-0 animate-pulse rounded-full bg-info" />
       )}
       <div className="min-w-0 flex-1">
         <Link
@@ -242,7 +210,7 @@ function AttentionRow({ doc, admin }: { doc: RecentDocument; admin: boolean }) {
         <p
           className={cn(
             "line-clamp-2 text-xs",
-            doc.status === "failed" ? "text-red-700" : "text-muted-foreground",
+            doc.status === "failed" ? "text-danger" : "text-muted-foreground",
           )}
         >
           {doc.status === "failed" ? (

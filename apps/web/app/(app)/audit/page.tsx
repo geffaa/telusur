@@ -91,9 +91,9 @@ export default function AuditPage() {
         />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto surface">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
+          <thead className="table-head">
             <tr>
               <th className="px-4 py-2 font-medium whitespace-nowrap">Waktu</th>
               <th className="px-4 py-2 font-medium">Pelaku</th>
@@ -114,7 +114,7 @@ export default function AuditPage() {
               const expanded = open === item.id;
               return (
                 <Fragment key={item.id}>
-                  <tr className="cursor-pointer hover:bg-muted/40" onClick={() => setOpen(expanded ? null : item.id)}>
+                  <tr className="cursor-pointer hover:bg-brand-soft/40" onClick={() => setOpen(expanded ? null : item.id)}>
                     <td className="px-4 py-2 whitespace-nowrap text-muted-foreground tabular-nums">
                       {formatDate(item.created_at)}
                     </td>
@@ -128,7 +128,7 @@ export default function AuditPage() {
                     </td>
                   </tr>
                   {expanded && (
-                    <tr className="bg-muted/20">
+                    <tr className="bg-muted/40">
                       <td colSpan={5} className="px-4 py-3">
                         <Detail item={item} />
                       </td>

@@ -63,7 +63,7 @@ export function FeedbackButtons({
       </div>
       {asking && (
         <form
-          className="mt-1 max-w-lg space-y-2 rounded-lg border p-3"
+          className="mt-1 max-w-lg space-y-2 surface p-3"
           onSubmit={(e) => {
             e.preventDefault();
             send(-1, reason, comment);
@@ -79,7 +79,7 @@ export function FeedbackButtons({
                 onClick={() => setReason(r)}
                 className={cn(
                   "rounded-md border px-2 py-1 text-xs",
-                  reason === r ? "border-foreground bg-foreground text-background" : "hover:bg-muted",
+                  reason === r ? "border-brand bg-brand text-primary-foreground" : "hover:bg-muted",
                 )}
               >
                 {REASON_LABEL[r]}

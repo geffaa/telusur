@@ -146,7 +146,7 @@ function Evaluation() {
       />
 
       {active && (
-        <div className="mb-6 rounded-lg border px-4 py-3">
+        <div className="mb-6 surface px-4 py-3">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span>
               Menjalankan <span className="font-medium">{active.name}</span>
@@ -157,7 +157,7 @@ function Evaluation() {
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full bg-foreground transition-all"
+              className="h-full rounded-full bg-brand transition-all"
               style={{
                 width: `${active.case_count ? (active.progress / active.case_count) * 100 : 2}%`,
               }}
@@ -175,7 +175,7 @@ function Evaluation() {
       <ComparisonTable runs={latest} />
 
       <div
-        className="mt-8 mb-3 flex rounded-md border p-0.5 text-sm w-fit"
+        className="segmented mt-8 mb-3"
         role="tablist"
       >
         {(
@@ -189,10 +189,6 @@ function Evaluation() {
             role="tab"
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={cn(
-              "rounded px-2.5 py-1 text-muted-foreground",
-              tab === key && "bg-muted font-medium text-foreground",
-            )}
           >
             {label}
           </button>
@@ -212,7 +208,7 @@ function Evaluation() {
 function ComparisonTable({ runs }: { runs: EvalRunItem[] }) {
   if (!runs.length) {
     return (
-      <p className="rounded-lg border px-6 py-10 text-center text-sm text-muted-foreground">
+      <p className="surface px-6 py-10 text-center text-sm text-muted-foreground">
         Belum ada hasil. Jalankan evaluasi untuk melihat angka.
       </p>
     );
@@ -230,9 +226,9 @@ function ComparisonTable({ runs }: { runs: EvalRunItem[] }) {
   )?.metrics;
   return (
     <section>
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto surface">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+          <thead className="table-head">
             <tr>
               <th className="px-4 py-2 text-left font-medium">Konfigurasi</th>
               {COLUMNS.map((c) => (
@@ -399,9 +395,9 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
       </div>
 
       {isLoading && <Skeleton className="h-40 rounded-lg" />}
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto surface">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
+          <thead className="table-head">
             <tr>
               <th className="px-4 py-2 font-medium">Pertanyaan</th>
               <th className="px-3 py-2 font-medium">Jenis</th>
@@ -421,7 +417,7 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
               return (
                 <Fragment key={r.case_id}>
                   <tr
-                    className="cursor-pointer hover:bg-muted/40"
+                    className="cursor-pointer hover:bg-brand-soft/40"
                     onClick={() => setOpen(expanded ? null : r.case_id)}
                   >
                     <td className="max-w-xl px-4 py-2">{r.question}</td>
@@ -436,7 +432,7 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
                     <td
                       className={cn(
                         "px-3 py-2 text-right whitespace-nowrap",
-                        failed(r) && "text-red-700 dark:text-red-400",
+                        failed(r) && "text-danger",
                       )}
                     >
                       {rankLabel(r)}
@@ -457,7 +453,7 @@ function Results({ runs }: { runs: EvalRunItem[] }) {
                     </td>
                   </tr>
                   {expanded && (
-                    <tr className="bg-muted/20">
+                    <tr className="bg-muted/40">
                       <td colSpan={7} className="px-4 py-3">
                         <ResultDetail r={r} />
                       </td>
@@ -586,7 +582,7 @@ function Cases() {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-        <div className="flex rounded-md border p-0.5" role="tablist">
+        <div className="segmented" role="tablist">
           {(
             [
               ["todo", "Perlu ditinjau", (data?.length ?? 0) - verified],
@@ -598,10 +594,6 @@ function Cases() {
               role="tab"
               aria-selected={filter === key}
               onClick={() => setFilter(key)}
-              className={cn(
-                "rounded px-2.5 py-1 text-muted-foreground",
-                filter === key && "bg-muted font-medium text-foreground",
-              )}
             >
               {label} <span className="tabular-nums opacity-60">{n}</span>
             </button>
@@ -613,7 +605,7 @@ function Cases() {
         </span>
       </div>
       {isLoading && <Skeleton className="h-40 rounded-lg" />}
-      <ul className="divide-y rounded-lg border empty:hidden">
+      <ul className="divide-y surface empty:hidden">
         {rows?.map((c) => (
           <li
             key={c.id}

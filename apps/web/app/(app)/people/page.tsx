@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Avatar } from "@/components/avatar";
 import { PageHeader } from "@/components/page-header";
+import { RoleBadge } from "@/components/role-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -23,7 +25,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useMe } from "@/hooks/use-me";
 import { api, ROLE_LABEL, type Group, type Role, type UserItem } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
@@ -58,7 +59,7 @@ export default function PeoplePage() {
         }
       />
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <div className="flex rounded-md border p-0.5 text-sm" role="tablist">
+        <div className="segmented" role="tablist">
           {(
             [
               ["users", "Pengguna", users?.length],
@@ -70,7 +71,6 @@ export default function PeoplePage() {
               role="tab"
               aria-selected={tab === key}
               onClick={() => setTab(key)}
-              className={cn("rounded px-2.5 py-1 text-muted-foreground", tab === key && "bg-muted font-medium text-foreground")}
             >
               {label} <span className="tabular-nums opacity-60">{n ?? ""}</span>
             </button>
@@ -87,7 +87,7 @@ export default function PeoplePage() {
       </div>
 
       {tab === "users" ? (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto surface">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -109,13 +109,20 @@ export default function PeoplePage() {
               {visible?.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell>
-                    <p className="font-medium">
-                      {u.name}
-                      {u.id === me?.id && <span className="ml-2 text-xs font-normal text-muted-foreground">Anda</span>}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{u.email}</p>
+                    <div className="flex items-center gap-3">
+                      <Avatar name={u.name} />
+                      <div className="min-w-0">
+                        <p className="font-medium">
+                          {u.name}
+                          {u.id === me?.id && <span className="ml-2 text-xs font-normal text-muted-foreground">Anda</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{u.email}</p>
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell className="text-sm whitespace-nowrap">{ROLE_LABEL[u.role]}</TableCell>
+                  <TableCell>
+                    <RoleBadge role={u.role} />
+                  </TableCell>
                   <TableCell className="text-sm">
                     {u.group_ids.length ? (
                       u.group_ids.map(groupName).sort().join(", ")
@@ -341,7 +348,7 @@ function GroupsTab({ groups, editable }: { groups?: Group[]; editable: boolean }
           </Button>
         </form>
       )}
-      <ul className="divide-y rounded-lg border">
+      <ul className="divide-y surface">
         {groups?.map((g) => (
           <li key={g.id} className="flex items-center gap-3 px-4 py-2.5">
             <span className="flex-1 text-sm font-medium">{g.name}</span>
