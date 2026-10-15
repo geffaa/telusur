@@ -23,7 +23,8 @@ NUMBERED_HEADING = re.compile(
 
 
 class ParseError(Exception):
-    """A file that can be read but cannot be ingested; the message is shown to admins."""
+    """A file that can be read but cannot be ingested. The argument is a stable code
+    (e.g. "pdf_scanned"); the UI translates it for whoever reads it later."""
 
 
 @dataclass
@@ -49,7 +50,7 @@ def parse_file(path: Path, mime: str) -> ParsedDocument:
         return parse_docx(path)
     if suffix in {".md", ".markdown", ".txt"}:
         return parse_markdown(path.read_text(encoding="utf-8", errors="replace"))
-    raise ParseError(f"Format file tidak didukung: {suffix or mime}")
+    raise ParseError("unsupported_format")
 
 
 # ---------------------------------------------------------------- PDF
@@ -59,9 +60,9 @@ def parse_pdf(path: Path) -> ParsedDocument:
     try:
         doc = fitz.open(path)
     except Exception as exc:
-        raise ParseError("File rusak atau bukan PDF yang valid") from exc
+        raise ParseError("pdf_invalid") from exc
     if doc.needs_pass:
-        raise ParseError("PDF terenkripsi / dilindungi password")
+        raise ParseError("pdf_encrypted")
 
     with doc:
         body_size = _body_font_size(doc)
@@ -103,7 +104,7 @@ def parse_pdf(path: Path) -> ParsedDocument:
         blocks = _merge_lines(blocks)
         pages = doc.page_count
         if text_chars < MIN_CHARS_PER_PAGE * pages:
-            raise ParseError("PDF tampaknya hasil scan (tidak ada teks). Butuh OCR.")
+            raise ParseError("pdf_scanned")
         title = (doc.metadata or {}).get("title") or None
         return ParsedDocument(blocks=blocks, pages=pages, title=title)
 
@@ -194,7 +195,7 @@ def parse_docx(path: Path) -> ParsedDocument:
     try:
         document = docx.Document(str(path))
     except Exception as exc:
-        raise ParseError("File rusak atau bukan DOCX yang valid") from exc
+        raise ParseError("docx_invalid") from exc
 
     blocks: list[Block] = []
     # DOCX has no pages; approximate one page per ~3000 characters for citations.
@@ -225,7 +226,7 @@ def parse_docx(path: Path) -> ParsedDocument:
                 chars += len(md)
 
     if not blocks:
-        raise ParseError("DOCX kosong")
+        raise ParseError("empty_document")
     title = document.core_properties.title or None
     return ParsedDocument(blocks=blocks, pages=page(), title=title)
 
@@ -282,5 +283,5 @@ def parse_markdown(source: str) -> ParsedDocument:
             paragraph.append(stripped)
     flush()
     if not blocks:
-        raise ParseError("Dokumen kosong")
+        raise ParseError("empty_document")
     return ParsedDocument(blocks=blocks, pages=1)

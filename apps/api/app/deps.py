@@ -4,10 +4,11 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import jwt
-from fastapi import Cookie, Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import tenant_session
+from app.i18n import AppError
 from app.models import Role
 from app.security import decode_token
 
@@ -33,17 +34,17 @@ def current_user(
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization[7:]
     if not token:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Belum login")
+        raise AppError(status.HTTP_401_UNAUTHORIZED, "not_logged_in")
     try:
         claims = decode_token(token)
         return CurrentUser(uuid.UUID(claims["sub"]), uuid.UUID(claims["tid"]), Role(claims["role"]))
     except (jwt.PyJWTError, KeyError, ValueError) as exc:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sesi tidak valid") from exc
+        raise AppError(status.HTTP_401_UNAUTHORIZED, "invalid_session") from exc
 
 
 def knowledge_admin(user: Annotated[CurrentUser, Depends(current_user)]) -> CurrentUser:
     if not user.can_manage_knowledge:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Butuh peran Knowledge Admin")
+        raise AppError(status.HTTP_403_FORBIDDEN, "needs_knowledge_admin")
     return user
 
 
@@ -59,7 +60,7 @@ DB = Annotated[AsyncSession, Depends(db)]
 
 def tenant_admin(user: Annotated[CurrentUser, Depends(current_user)]) -> CurrentUser:
     if user.role != Role.tenant_admin:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Butuh peran Tenant Admin")
+        raise AppError(status.HTTP_403_FORBIDDEN, "needs_tenant_admin")
     return user
 
 

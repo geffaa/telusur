@@ -1,13 +1,14 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app import audit
 from app.acl import readable_collection_ids, readable_document_ids, reader_for
 from app.deps import DB, Admin, User
+from app.i18n import AppError
 from app.models import Collection, Document
 
 router = APIRouter(prefix="/collections", tags=["collections"])
@@ -95,7 +96,7 @@ async def get_collection(collection_id: uuid.UUID, user: User, session: DB) -> C
         collection = collection if collection_id in readable else None
     if not collection:
         # Same 404 for "other tenant" and "does not exist": RLS hides both.
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Collection tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "collection_not_found")
     count = await session.scalar(
         select(func.count(Document.id)).where(
             Document.collection_id == collection_id, Document.deleted_at.is_(None)

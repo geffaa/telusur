@@ -50,7 +50,7 @@ async def ingest_version(tenant_id: uuid.UUID, version_id: uuid.UUID) -> int:
         embedder = await asyncio.to_thread(get_embedder)
         drafts = chunk_blocks(parsed.blocks, embedder.count_tokens)
         if not drafts:
-            raise ParseError("Tidak ada teks yang bisa diambil dari dokumen")
+            raise ParseError("no_text")
 
         await _set_status(tenant_id, version_id, VersionStatus.embedding, pages=parsed.pages)
         if parsed.title and title == auto_title(filename):
@@ -71,7 +71,7 @@ async def ingest_version(tenant_id: uuid.UUID, version_id: uuid.UUID) -> int:
             tenant_id,
             version_id,
             VersionStatus.failed,
-            error="Kesalahan internal saat memproses. Coba lagi atau hubungi admin.",
+            error="internal_error",
         )
         raise
 

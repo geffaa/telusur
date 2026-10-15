@@ -2,12 +2,13 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.deps import DB, Admin, User
+from app.i18n import AppError
 from app.models import Conversation, Feedback, Message
 from app.models import User as UserModel
 
@@ -51,7 +52,7 @@ async def give_feedback(message_id: uuid.UUID, body: FeedbackIn, user: User, ses
         )
     )
     if not owned:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pesan tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "message_not_found")
     values = {
         "tenant_id": user.tenant_id,
         "message_id": message_id,
@@ -90,7 +91,7 @@ async def list_feedback(
     limit: int = 100,
 ) -> FeedbackSummary:
     if rating not in (None, 1, -1):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "rating harus 1 atau -1")
+        raise AppError(status.HTTP_422_UNPROCESSABLE_CONTENT, "rating_invalid")
     counts = dict(
         (
             await session.execute(select(Feedback.rating, func.count()).group_by(Feedback.rating))

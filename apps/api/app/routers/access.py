@@ -2,12 +2,13 @@
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request, status
 from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 
 from app import audit
 from app.deps import DB, Admin, User
+from app.i18n import AppError
 from app.models import AccessGrant, Collection, Document, Group, GroupUser, PrincipalType
 
 router = APIRouter(tags=["access"])
@@ -61,7 +62,7 @@ async def _replace(
 ) -> None:
     valid = set(await session.scalars(select(Group.id).where(Group.id.in_(body.group_ids))))
     if len(valid) != len(set(body.group_ids)):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Grup tidak dikenal")
+        raise AppError(status.HTTP_422_UNPROCESSABLE_CONTENT, "unknown_group")
     await session.execute(
         delete(AccessGrant).where(
             AccessGrant.resource_type == resource_type, AccessGrant.resource_id == resource_id
@@ -102,7 +103,7 @@ async def _describe(session, access: AccessOut) -> dict:
 @router.get("/collections/{collection_id}/access", response_model=AccessOut)
 async def get_collection_access(collection_id: uuid.UUID, user: Admin, session: DB) -> AccessOut:
     if not await session.get(Collection, collection_id):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Collection tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "collection_not_found")
     return await _grants(session, "collection", collection_id)
 
 
@@ -112,7 +113,7 @@ async def set_collection_access(
 ) -> AccessOut:
     collection = await session.get(Collection, collection_id)
     if not collection:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Collection tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "collection_not_found")
     before = await _describe(session, await _grants(session, "collection", collection_id))
     await _replace(session, user, "collection", collection_id, body)
     await session.flush()
@@ -135,7 +136,7 @@ async def set_collection_access(
 async def get_document_access(document_id: uuid.UUID, user: Admin, session: DB) -> AccessOut:
     doc = await session.get(Document, document_id)
     if not doc or doc.deleted_at:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dokumen tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "document_not_found")
     if not doc.acl_override:
         inherited = await _grants(session, "collection", doc.collection_id)
         return AccessOut(everyone=inherited.everyone, group_ids=inherited.group_ids, inherit=True)
@@ -148,7 +149,7 @@ async def set_document_access(
 ) -> AccessOut:
     doc = await session.get(Document, document_id)
     if not doc or doc.deleted_at:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dokumen tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "document_not_found")
     before = await _describe(session, await get_document_access(document_id, user, session))
     doc.acl_override = not body.inherit
     if body.inherit:

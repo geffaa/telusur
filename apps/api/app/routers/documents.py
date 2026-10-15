@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Form, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -15,6 +15,7 @@ from app.acl import can_read_document, readable_document_ids, reader_for
 from app.audit import client_ip
 from app.config import get_settings
 from app.deps import DB, Admin, CurrentUser, User
+from app.i18n import AppError
 from app.models import IN_PROGRESS_STATUSES as IN_PROGRESS
 from app.models import Chunk, Collection, Document, DocumentVersion, VersionStatus
 from app.queue import enqueue_ingest
@@ -93,7 +94,7 @@ async def _get_document(
         and not user.can_manage_knowledge
         and not await can_read_document(session, await reader_for(session, user), document_id)
     ):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dokumen tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "document_not_found")
     doc = await session.scalar(
         select(Document)
         .where(Document.id == document_id, Document.deleted_at.is_(None))
@@ -102,7 +103,7 @@ async def _get_document(
         .execution_options(populate_existing=True)
     )
     if not doc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dokumen tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "document_not_found")
     return doc
 
 
@@ -125,17 +126,15 @@ async def _read_upload(file: UploadFile) -> tuple[str, str, bytes, str]:
     filename = file.filename or "dokumen"
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED:
-        raise HTTPException(
-            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Format didukung: PDF, DOCX, Markdown, TXT"
-        )
+        raise AppError(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "unsupported_upload")
     limit = get_settings().max_upload_mb * 1024 * 1024
     data = await file.read(limit + 1)
     if len(data) > limit:
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE, f"Maksimal {get_settings().max_upload_mb} MB"
+        raise AppError(
+            status.HTTP_413_CONTENT_TOO_LARGE, "file_too_large", mb=get_settings().max_upload_mb
         )
     if not data:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "File kosong")
+        raise AppError(status.HTTP_422_UNPROCESSABLE_CONTENT, "file_empty")
     return filename, ALLOWED[suffix], data, hashlib.sha256(data).hexdigest()
 
 
@@ -151,7 +150,7 @@ async def _reject_duplicate(session, sha256: str) -> None:
         .limit(1)
     )
     if duplicate:
-        raise HTTPException(status.HTTP_409_CONFLICT, f'Dokumen identik sudah ada: "{duplicate}"')
+        raise AppError(status.HTTP_409_CONFLICT, "duplicate_document", title=duplicate)
 
 
 async def _add_version(
@@ -188,7 +187,7 @@ async def upload_document(
 ) -> DocumentOut:
     collection = await session.get(Collection, collection_id)
     if not collection:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Collection tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "collection_not_found")
     filename, mime, data, sha256 = await _read_upload(file)
     await _reject_duplicate(session, sha256)
 
@@ -229,11 +228,11 @@ async def upload_version(
     until the new one is fully indexed; the switch is atomic (see ingestion pipeline)."""
     doc = await _get_document(session, document_id)
     if any(v.status in IN_PROGRESS for v in doc.versions):
-        raise HTTPException(status.HTTP_409_CONFLICT, "Masih ada versi yang sedang diproses")
+        raise AppError(status.HTTP_409_CONFLICT, "version_in_progress")
     filename, mime, data, sha256 = await _read_upload(file)
     current = next((v for v in doc.versions if v.is_current), None)
     if current and current.sha256 == sha256:
-        raise HTTPException(status.HTTP_409_CONFLICT, "File sama persis dengan versi aktif")
+        raise AppError(status.HTTP_409_CONFLICT, "same_as_active")
     await _reject_duplicate(session, sha256)
 
     number = max((v.version for v in doc.versions), default=0) + 1
@@ -302,7 +301,7 @@ async def download_file(
         (v for v in doc.versions if (v.version == version if version else v.is_current)), None
     )
     if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Versi tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "version_not_found")
     return FileResponse(
         storage.path_for(target.storage_path),
         media_type=target.mime,
@@ -316,9 +315,7 @@ async def retry_ingest(document_id: uuid.UUID, user: Admin, session: DB) -> Docu
     doc = await _get_document(session, document_id)
     latest = doc.versions[-1] if doc.versions else None
     if not latest or latest.status != VersionStatus.failed:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "Hanya versi yang gagal yang bisa diproses ulang"
-        )
+        raise AppError(status.HTTP_409_CONFLICT, "only_failed_retry")
     latest.status, latest.error = VersionStatus.queued, None
     await audit.record(
         session,

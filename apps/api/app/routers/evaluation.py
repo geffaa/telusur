@@ -2,12 +2,13 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app import audit
 from app.deps import DB, Admin
+from app.i18n import AppError
 from app.models import Document, EvalCase, EvalResult, EvalRun, Feedback, Message, User
 from app.queue import enqueue_eval
 
@@ -111,7 +112,7 @@ async def list_cases(user: Admin, session: DB) -> list[CaseOut]:
 async def update_case(case_id: uuid.UUID, body: CasePatch, user: Admin, session: DB) -> CaseOut:
     case = await session.get(EvalCase, case_id)
     if not case:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kasus uji tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "eval_case_not_found")
     for field in ("question", "expected_answer", "verified"):
         value = getattr(body, field)
         if value is not None:
@@ -129,7 +130,7 @@ async def update_case(case_id: uuid.UUID, body: CasePatch, user: Admin, session:
 async def delete_case(case_id: uuid.UUID, user: Admin, session: DB) -> None:
     case = await session.get(EvalCase, case_id)
     if not case:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kasus uji tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "eval_case_not_found")
     await session.delete(case)
 
 
@@ -139,7 +140,7 @@ async def case_from_feedback(feedback_id: uuid.UUID, user: Admin, session: DB) -
     document and writes the reference answer before marking it verified."""
     fb = await session.get(Feedback, feedback_id)
     if not fb:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Feedback tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "feedback_not_found")
     answer = await session.get(Message, fb.message_id)
     question = await session.scalar(
         select(Message.content)
@@ -174,7 +175,7 @@ async def list_runs(user: Admin, session: DB) -> list[RunOut]:
 async def start_run(body: RunIn, user: Admin, session: DB, request: Request) -> RunOut:
     busy = await session.scalar(select(EvalRun.id).where(EvalRun.status.in_(["queued", "running"])))
     if busy:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Masih ada evaluasi yang berjalan")
+        raise AppError(status.HTTP_409_CONFLICT, "eval_running")
     name = body.mode + (" + jawaban" if body.answers else "")
     run = EvalRun(
         tenant_id=user.tenant_id,

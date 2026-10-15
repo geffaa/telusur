@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.i18n import AppError, app_error_handler
 from app.routers import (
     access,
     audit_logs,
@@ -32,6 +33,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Telusur API", version="0.2.0", lifespan=lifespan)
+app.add_exception_handler(AppError, app_error_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in get_settings().cors_origins.split(",")],

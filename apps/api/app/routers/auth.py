@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
@@ -6,6 +6,7 @@ from app import audit
 from app.config import get_settings
 from app.db import SessionLocal, tenant_session
 from app.deps import COOKIE_NAME, DB, CurrentUser, User
+from app.i18n import AppError
 from app.models import Tenant
 from app.models import User as UserModel
 from app.security import create_token, verify_password
@@ -28,7 +29,7 @@ class MeOut(BaseModel):
     tenant_slug: str
 
 
-INVALID = HTTPException(status.HTTP_401_UNAUTHORIZED, "Workspace, email, atau password salah")
+INVALID = AppError(status.HTTP_401_UNAUTHORIZED, "invalid_login")
 
 
 @router.post("/login")
@@ -74,7 +75,7 @@ async def me(user: User, session: DB) -> MeOut:
     row = await session.get(UserModel, user.id)
     tenant = await session.get(Tenant, user.tenant_id)
     if not row or not tenant:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User tidak ditemukan")
+        raise AppError(status.HTTP_401_UNAUTHORIZED, "user_not_found")
     return MeOut(
         id=str(row.id),
         name=row.name,

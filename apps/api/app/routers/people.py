@@ -5,7 +5,7 @@ import secrets
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -14,6 +14,7 @@ from app import audit
 from app.acl import Reader, readable_document_ids
 from app.config import get_settings
 from app.deps import DB, Admin, TenantAdmin
+from app.i18n import AppError
 from app.models import AccessGrant, Collection, Document, Group, GroupUser, Role
 from app.models import User as UserModel
 from app.rag.retrieval import retrieve
@@ -78,7 +79,7 @@ async def list_users(user: Admin, session: DB) -> list[UserOut]:
 async def _set_groups(session, tenant_id, user_id, group_ids) -> None:
     valid = set(await session.scalars(select(Group.id).where(Group.id.in_(group_ids))))
     if len(valid) != len(set(group_ids)):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Grup tidak dikenal")
+        raise AppError(status.HTTP_422_UNPROCESSABLE_CONTENT, "unknown_group")
     await session.execute(delete(GroupUser).where(GroupUser.user_id == user_id))
     for gid in valid:
         session.add(GroupUser(group_id=gid, user_id=user_id, tenant_id=tenant_id))
@@ -92,7 +93,7 @@ async def create_user(
         select(UserModel.id).where(func.lower(UserModel.email) == body.email.lower())
     )
     if exists:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email sudah terdaftar")
+        raise AppError(status.HTTP_409_CONFLICT, "email_taken")
     password = secrets.token_urlsafe(9)
     new = UserModel(
         tenant_id=user.tenant_id,
@@ -124,7 +125,7 @@ async def update_user(
 ) -> UserOut:
     target = await session.get(UserModel, user_id)
     if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pengguna tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "user_not_found")
     members = await _memberships(session)
     current_groups = members.get(user_id, [])
 
@@ -134,7 +135,7 @@ async def update_user(
                 select(func.count()).where(UserModel.role == Role.tenant_admin)
             )
             if admins <= 1:
-                raise HTTPException(status.HTTP_409_CONFLICT, "Harus ada minimal satu Tenant Admin")
+                raise AppError(status.HTTP_409_CONFLICT, "last_tenant_admin")
         await audit.record(
             session,
             user,
@@ -174,7 +175,7 @@ async def create_group(body: GroupIn, user: TenantAdmin, session: DB, request: R
     try:
         await session.flush()
     except IntegrityError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Nama grup sudah dipakai") from exc
+        raise AppError(status.HTTP_409_CONFLICT, "group_name_taken") from exc
     await audit.record(
         session,
         user,
@@ -193,13 +194,10 @@ async def delete_group(
 ) -> None:
     group = await session.get(Group, group_id)
     if not group:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Grup tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "group_not_found")
     grants = await session.scalar(select(func.count()).where(AccessGrant.principal_id == group_id))
     if grants:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            f"Grup masih dipakai di {grants} pengaturan akses. Ubah aksesnya dulu.",
-        )
+        raise AppError(status.HTTP_409_CONFLICT, "group_in_use", n=grants)
     await session.delete(group)
     await audit.record(
         session,
@@ -223,7 +221,7 @@ async def access_check(body: AccessCheckIn, user: Admin, session: DB, request: R
     the passages retrieval would hand to the model, without calling the model."""
     target = await session.get(UserModel, body.user_id)
     if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pengguna tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "user_not_found")
     groups = (await _memberships(session)).get(target.id, [])
     reader = Reader(target.id, tuple(groups))
     readable = await readable_document_ids(session, reader)
