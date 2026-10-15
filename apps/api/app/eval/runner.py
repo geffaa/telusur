@@ -27,7 +27,7 @@ from app.config import get_settings
 from app.db import tenant_session
 from app.models import EvalCase, EvalResult, EvalRun, GroupUser
 from app.rag import llm
-from app.rag.chat import build_messages, prepare_query, verify_citations
+from app.rag.chat import build_messages, prepare_queries, verify_citations
 from app.rag.retrieval import RetrievalMode, retrieve
 
 log = logging.getLogger(__name__)
@@ -175,10 +175,12 @@ async def run(tenant_id: uuid.UUID, run_id: uuid.UUID) -> dict:
         for i, case in enumerate(cases.values(), start=1):
             reader = Reader(case.ask_as_user_id, tuple(memberships.get(case.ask_as_user_id, [])))
             started = time.perf_counter()
-            query = case.question
+            queries = [case.question]
             if config.get("translate", True):
-                query = await prepare_query(case.question)
-            retrieval = await retrieve(tenant_id, reader, query, mode=mode)
+                queries = await prepare_queries(case.question)
+            retrieval = await retrieve(
+                tenant_id, reader, queries[0], mode=mode, alt_queries=queries[1:]
+            )
             retrieval_ms = int((time.perf_counter() - started) * 1000)
             cands = retrieval.candidates
             top = cands[0].score if cands else 0.0

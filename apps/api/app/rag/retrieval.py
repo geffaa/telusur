@@ -13,7 +13,7 @@ import json
 import re
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass, field
 from typing import Literal
@@ -193,17 +193,24 @@ async def retrieve(
     k_rerank: int | None = None,
     k_final: int = 6,
     mode: RetrievalMode = "hybrid_rerank",
+    alt_queries: Sequence[str] = (),
 ) -> RetrievalResult:
     """`mode` exists for evaluation: production always uses hybrid_rerank. Without the
     reranker, `score` is the fused/raw rank score and is not comparable to the threshold.
 
+    `alt_queries` are paraphrases of `query` (used for questions translated from another
+    language): every phrasing is searched, all rankings are fused with RRF, and a passage's
+    rerank score is its best score against any phrasing. One translation can pick different
+    words than the documents ("pembelian" vs "pengadaan"); several rarely all miss.
+
     Pass a tenant id instead of a session on hot paths: a database connection is then held
-    only for the two SQL queries, never while waiting for the GPU. (Holding it across model
+    only for the SQL queries, never while waiting for the GPU. (Holding it across model
     inference exhausted the connection pool at 20 concurrent users in the load test.)
     """
+    queries = [query, *[q for q in alt_queries if q and q != query]]
     timings: dict[str, int] = {}
     started = time.perf_counter()
-    embedding = (await asyncio.to_thread(get_embedder().embed, [query]))[0]
+    embeddings = await asyncio.to_thread(get_embedder().embed, queries)
     timings["embed"] = int((time.perf_counter() - started) * 1000)
 
     base = f"""
@@ -215,57 +222,61 @@ async def retrieve(
         JOIN readable r ON r.id = d.id
     """
     started = time.perf_counter()
-    vector_rows: list = []
-    lexical_rows: list = []
-    tsquery = lexical_query(query) if mode != "vector" else None
+    rankings: list[tuple[str, list]] = []  # ("vector" | "lexical", rows)
     async with _connection(db) as session:
         # Filtered HNSW: keep scanning the graph until enough rows pass the ACL filter.
         await session.execute(text("SET LOCAL hnsw.iterative_scan = relaxed_order"))
-        if mode != "lexical":
-            vector_rows = (
-                await session.execute(
-                    text(
-                        base % "c.embedding <=> CAST(:qvec AS vector)"
-                        + " ORDER BY rank_score LIMIT :k"
-                    ),
-                    {**reader.params, "qvec": str(embedding), "k": k_vector},
-                )
-            ).all()
-        if tsquery:
-            lexical_rows = (
-                await session.execute(
-                    text(
-                        base % "ts_rank_cd(c.tsv, to_tsquery('simple', :tsq))"
-                        + " WHERE c.tsv @@ to_tsquery('simple', :tsq) ORDER BY rank_score DESC LIMIT :k"
-                    ),
-                    {**reader.params, "tsq": tsquery, "k": k_lexical},
-                )
-            ).all()
+        for q, embedding in zip(queries, embeddings, strict=True):
+            if mode != "lexical":
+                rows = (
+                    await session.execute(
+                        text(
+                            base % "c.embedding <=> CAST(:qvec AS vector)"
+                            + " ORDER BY rank_score LIMIT :k"
+                        ),
+                        {**reader.params, "qvec": str(embedding), "k": k_vector},
+                    )
+                ).all()
+                rankings.append(("vector", rows))
+            tsquery = lexical_query(q) if mode != "vector" else None
+            if tsquery:
+                rows = (
+                    await session.execute(
+                        text(
+                            base % "ts_rank_cd(c.tsv, to_tsquery('simple', :tsq))"
+                            + " WHERE c.tsv @@ to_tsquery('simple', :tsq) ORDER BY rank_score DESC LIMIT :k"
+                        ),
+                        {**reader.params, "tsq": tsquery, "k": k_lexical},
+                    )
+                ).all()
+                rankings.append(("lexical", rows))
     timings["search"] = int((time.perf_counter() - started) * 1000)
 
     fused: dict[int, Candidate] = {}
-    for rank, row in enumerate(vector_rows, start=1):
-        cand = fused.setdefault(row.id, _row_to_candidate(row))
-        cand.vector_rank = rank
-        cand.rrf += 1 / (RRF_K + rank)
-    for rank, row in enumerate(lexical_rows, start=1):
-        cand = fused.setdefault(row.id, _row_to_candidate(row))
-        cand.lexical_rank = rank
-        cand.rrf += 1 / (RRF_K + rank)
+    for kind, rows in rankings:
+        for rank, row in enumerate(rows, start=1):
+            cand = fused.setdefault(row.id, _row_to_candidate(row))
+            if kind == "vector":
+                cand.vector_rank = min(cand.vector_rank or rank, rank)
+            else:
+                cand.lexical_rank = min(cand.lexical_rank or rank, rank)
+            cand.rrf += 1 / (RRF_K + rank)
     k_rerank = k_rerank or get_settings().rerank_candidates
     pool = sorted(fused.values(), key=lambda c: c.rrf, reverse=True)[:k_rerank]
     if mode != "hybrid_rerank":
         for cand in pool:
             cand.score = cand.rrf
         return RetrievalResult(
-            candidates=pool[:k_final], query_embedding=embedding, timings_ms=timings
+            candidates=pool[:k_final], query_embedding=embeddings[0], timings_ms=timings
         )
 
     started = time.perf_counter()
-    scores = await asyncio.to_thread(get_reranker().score, query, [c.passage() for c in pool])
-    for cand, score in zip(pool, scores, strict=True):
-        cand.score = score
+    passages = [c.passage() for c in pool]
+    for q in queries:
+        scores = await asyncio.to_thread(get_reranker().score, q, passages)
+        for cand, score in zip(pool, scores, strict=True):
+            cand.score = max(cand.score, score)
     timings["rerank"] = int((time.perf_counter() - started) * 1000)
 
     ranked = sorted(pool, key=lambda c: c.score, reverse=True)[:k_final]
-    return RetrievalResult(candidates=ranked, query_embedding=embedding, timings_ms=timings)
+    return RetrievalResult(candidates=ranked, query_embedding=embeddings[0], timings_ms=timings)

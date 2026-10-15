@@ -9,6 +9,8 @@ Emits events the router turns into Server-Sent Events:
   error         {message}
 """
 
+import json
+import logging
 import re
 import time
 import uuid
@@ -22,10 +24,12 @@ from app.acl import reader_for
 from app.config import get_settings
 from app.db import tenant_session
 from app.deps import CurrentUser
+from app.i18n import message
 from app.models import Conversation, KnowledgeGap, Message, MessageCitation
 from app.rag import llm
 from app.rag.retrieval import Candidate, retrieve
 
+log = logging.getLogger(__name__)
 HISTORY_TURNS = 6
 CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
 
@@ -180,6 +184,45 @@ async def prepare_query(question: str, history: list[tuple[str, str]] = ()) -> s
     return rewritten.strip().strip('"') or question
 
 
+MULTI_QUERY_PROMPT = """You prepare searches over an Indonesian company's internal policy documents (HR, finance, IT, operations).
+Rewrite the user's question as 3 different Indonesian search questions an employee might type. Translate the meaning, not word by word; vary the vocabulary the way policy documents phrase things (e.g. purchase -> pembelian / pengadaan; lose -> hilang / kehilangan / denda). Keep codes, numbers and names unchanged. If there is conversation history, make each question self-contained.
+
+History:
+{history}
+
+Question: {question}
+
+Reply JSON: {{"queries": ["...", "...", "..."]}}"""
+
+
+async def prepare_queries(question: str, history: list[tuple[str, str]] = ()) -> list[str]:
+    """Search queries for a question: the first is the main one, the rest are paraphrases.
+
+    Indonesian questions keep a single query (rewritten only for follow-ups). Questions in
+    another language get three Indonesian phrasings: measured on the English questions of
+    the eval set plus natural ones, a single translation left 3 of 25 below the refusal
+    threshold because it chose words the documents don't use; three phrasings left 1.
+    """
+    if detect_language(question) == CORPUS_LANGUAGE:
+        return [await prepare_query(question, history)]
+    transcript = "\n".join(f"{role}: {content[:500]}" for role, content in history) or "(kosong)"
+    try:
+        raw, _ = await llm.complete(
+            [
+                {
+                    "role": "user",
+                    "content": MULTI_QUERY_PROMPT.format(history=transcript, question=question),
+                }
+            ],
+            max_tokens=400,
+            json_mode=True,
+        )
+        queries = [q.strip() for q in json.loads(raw).get("queries", []) if isinstance(q, str)]
+    except (llm.LLMUnavailable, json.JSONDecodeError, AttributeError):
+        queries = []
+    return queries[:3] or [await prepare_query(question, history)]
+
+
 def build_messages(
     question: str,
     sources: list[Candidate],
@@ -207,7 +250,11 @@ def _title_from(question: str) -> str:
 
 
 async def answer(
-    user: CurrentUser, question: str, conversation_id: uuid.UUID | None, ip: str | None = None
+    user: CurrentUser,
+    question: str,
+    conversation_id: uuid.UUID | None,
+    ip: str | None = None,
+    ui_lang: str = "en",
 ) -> AsyncIterator[tuple[str, dict | list]]:
     started = time.perf_counter()
     settings = get_settings()
@@ -222,7 +269,7 @@ async def answer(
                 )
             )
             if not convo:
-                yield "error", {"message": "Percakapan tidak ditemukan"}
+                yield "error", {"message": message("conversation_not_found", ui_lang)}
                 return
         if not convo:
             convo = Conversation(
@@ -250,18 +297,19 @@ async def answer(
     #    follow-ups need the history, and the cross-encoder scores English questions
     #    against Indonesian passages far too low (measured: every false refusal in the
     #    eval set was an English question whose right passage was already ranked first).
-    search_query = question
+    search_query, alt_queries = question, []
     if history or language != CORPUS_LANGUAGE:
         yield "status", {"stage": "rewriting"}
         t = time.perf_counter()
-        search_query = await prepare_query(question, [(m.role, m.content) for m in history])
+        queries = await prepare_queries(question, [(m.role, m.content) for m in history])
+        search_query, alt_queries = queries[0], queries[1:]
         meta["timings_ms"]["rewrite"] = int((time.perf_counter() - t) * 1000)
 
     # 2. Retrieve only from documents this user may read.
     yield "status", {"stage": "searching"}
     async with tenant_session(user.tenant_id) as session:
         reader = await reader_for(session, user)
-    result = await retrieve(user.tenant_id, reader, search_query)
+    result = await retrieve(user.tenant_id, reader, search_query, alt_queries=alt_queries)
     meta["timings_ms"].update(result.timings_ms)
     meta["retrieval"] = result.debug()
 
@@ -291,10 +339,8 @@ async def answer(
                 parts.append(delta)
                 yield "delta", {"text": normalize_brackets(delta)}
         except llm.LLMUnavailable as exc:
-            yield (
-                "error",
-                {"message": f"Layanan AI sedang tidak tersedia ({exc}). Coba lagi sebentar."},
-            )
+            log.warning("LLM unavailable: %s", exc)
+            yield "error", {"message": message("llm_unavailable", ui_lang)}
             return
         meta["timings_ms"]["generate"] = int((time.perf_counter() - t) * 1000)
         content, cited, invalid = verify_citations("".join(parts), len(sources))

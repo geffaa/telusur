@@ -3,7 +3,7 @@ import logging
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
@@ -11,6 +11,7 @@ from sqlalchemy import delete, select
 from app.acl import readable_document_ids, reader_for
 from app.audit import client_ip
 from app.deps import DB, User
+from app.i18n import AppError, lang_of
 from app.models import Conversation, DocumentVersion, Message, MessageCitation
 from app.rag.chat import answer
 
@@ -63,7 +64,11 @@ async def chat(body: ChatIn, user: User, request: Request) -> StreamingResponse:
     async def events():
         try:
             async for event, data in answer(
-                user, body.message.strip(), body.conversation_id, client_ip(request)
+                user,
+                body.message.strip(),
+                body.conversation_id,
+                client_ip(request),
+                lang_of(request),
             ):
                 yield _sse(event, data)
         except Exception:
@@ -97,7 +102,7 @@ async def _own_conversation(session, user, conversation_id: uuid.UUID) -> Conver
         )
     )
     if not convo:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Percakapan tidak ditemukan")
+        raise AppError(status.HTTP_404_NOT_FOUND, "conversation_not_found")
     return convo
 
 
